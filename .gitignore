@@ -99,3 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# sensitive information such as passwords and database connection string
+cnxnstr.txt
