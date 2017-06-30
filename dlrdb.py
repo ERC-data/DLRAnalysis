@@ -38,9 +38,10 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename'):
     for row in rows:
         results.append(dict(zip(colnames, row)))
     df = pd.DataFrame(results)
+    print(df.info())
     return df
 
-def dataPeriod(dataframe, startdate = None, enddate = None):
+def profilePeriod(dataframe, startdate = None, enddate = None):
     "This function selects a subset of a dataframe based on a date range." 
     "Dates must be formated as 'YYYY-MM-DD'. Days start at 00:00 and end at 23:55"
     
@@ -72,5 +73,42 @@ def dataPeriod(dataframe, startdate = None, enddate = None):
         return print('This profile starts on %s and ends on %s. Choose an end date that falls within this period.' % (dataStart, dataEnd))
     
     #subset dataframe by the specified date range
-    df = dataframe.loc[(dataframe['Datefield'] >= startdate) & (dataframe['Datefield'] <= enddate)]
+    df = dataframe.loc[(dataframe['Datefield'] >= startdate) & (dataframe['Datefield'] <= enddate)].reset_index(drop=True)
+    #convert strings to category data type to reduce memory usage
+    df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
     return df
+
+def getGroups():
+    "This function performs some massive Groups wrangling"
+    groups = getData('Groups')
+    groups['ParentID'].fillna(0, inplace=True)
+    groups['ParentID'] = groups['ParentID'].astype('int64').astype('category')
+    groups['GroupName'] = groups['GroupName'].map(lambda x: x.strip())
+    
+    #Deconstruct groups table apart into levels
+    #LEVEL 1 GROUPS: domestic/non-domestic
+    groups_level_1 = groups[groups['ParentID']==0] 
+    #LEVEL 2 GROUPS: Eskom LR, NRS LR, Namibia, Clinics, Shops, Schools
+    groups_level_2 = groups[groups['ParentID'].isin(groups_level_1['GroupID'])]
+    #LEVLE 3 GROUPS: Years
+    groups_level_3 = groups[groups['ParentID'].isin(groups_level_2['GroupID'])]
+    #LEVLE 4 GROUPS: Locations
+    groups_level_4 = groups[groups['ParentID'].isin(groups_level_3['GroupID'])]
+    
+    #Slim down the group levels to only include columns requried for merging
+    g1 = groups.loc[groups['ParentID']==0,['GroupID','ParentID','GroupName']].reset_index(drop=True)
+    g2 = groups.loc[groups['ParentID'].isin(groups_level_1['GroupID']), ['GroupID','ParentID','GroupName']].reset_index(drop=True)
+    g3 = groups.loc[groups['ParentID'].isin(groups_level_2['GroupID']), ['GroupID','ParentID','GroupName']].reset_index(drop=True)
+    
+    #Reconstruct group levels as one pretty, multi-index table
+    recon3 = pd.merge(groups_level_4, g3, left_on ='ParentID', right_on = 'GroupID' , how='left', suffixes = ['_4','_3'])
+    recon2 = pd.merge(recon3, g2, left_on ='ParentID_3', right_on = 'GroupID' , how='left', suffixes = ['_3','_2'])
+    recon1 = pd.merge(recon2, g1, left_on ='ParentID', right_on = 'GroupID' , how='left', suffixes = ['_2','_1'])
+    prettyg = recon1[['ContextID','GroupID_1','GroupID_2','GroupID_3','GroupID_4','GroupName_1','GroupName_2','GroupName_3','GroupName_4']]
+    prettynames = ['ContextID', 'GroupID_1','GroupID_2','GroupID_3','GroupID_4','Dom_NonDom','Survey','Year','Location']
+    prettyg.columns = prettynames
+    
+    #Create multi-index dataframe
+    allgroups = prettyg.set_index(['GroupID_1','GroupID_2','GroupID_3','GroupID_4']).sort_index()
+    
+    return allgroups

@@ -8,30 +8,39 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dlrdb import getData, dataPeriod
+from dlrdb import getData, profilePeriod, getGroups
+
+#get all groups
+groups = getGroups()
+#select subset of groups
+groups2000 = groups[groups['Year']=='2000']
+
+#Get links table
+links = getData('LinkTable')
 
 #specify and execute query(ies)
 query1 = 'SELECT * FROM [General_LR4].[dbo].[linktable] WHERE ProfileID = 12005320'
 query2 = 'SELECT * FROM [General_LR4].[dbo].[linktable] WHERE AnswerID = 1004196'
 query = 'SELECT pt.ProfileID \
+ ,lt.AnswerID \
  ,pt.Datefield \
  ,pt.Unitsread \
  ,pt.Valid \
  ,p.RecorderID \
  ,p.Active \
  ,puom.Description \
- ,puom.UnitsID \
  FROM [General_LR4].[dbo].[Profiletable] pt \
  LEFT JOIN [General_LR4].[dbo].[profiles] p ON pt.ProfileID = p.ProfileId \
 	LEFT JOIN [General_LR4].[dbo].[ProfileUnitsOfMeasure] puom ON p.[Unit of measurement] = puom.UnitsID \
-WHERE pt.ProfileID = 12005320 OR pt.ProfileID = 12005321 OR pt.ProfileID = 12005322 \
+		LEFT JOIN [General_LR4].[dbo].[linktable] lt ON pt.ProfileID = lt.ProfileID \
+WHERE (pt.ProfileID = 12005320 OR pt.ProfileID = 12005321 OR pt.ProfileID = 12005322) AND lt.AnswerID != 0 \
 ORDER BY pt.Datefield, pt.ProfileID'
 
 
 df = getData(querystring = query)
 
 #subset profile on date-time
-april2012 = dataPeriod(df, '2012-04-01', '2012-04-30')
+april2012 = profilePeriod(df, '2012-04-01', '2012-04-30')
 
 #select all the average current values and sum for hourly data
 AvgA = df.loc[(df['Description']=='A avg'), ['Datefield','Unitsread']]
