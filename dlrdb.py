@@ -38,7 +38,8 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename'):
     for row in rows:
         results.append(dict(zip(colnames, row)))
     df = pd.DataFrame(results)
-    print(df.info())
+    #print("We have fetched a datatable with the following properties for you\n\n")
+    #print(df.info())
     return df
 
 def profilePeriod(dataframe, startdate = None, enddate = None):
@@ -78,7 +79,7 @@ def profilePeriod(dataframe, startdate = None, enddate = None):
     df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
     return df
 
-def getGroups():
+def getGroups(year = None):
     "This function performs some massive Groups wrangling"
     groups = getData('Groups')
     groups['ParentID'].fillna(0, inplace=True)
@@ -100,15 +101,31 @@ def getGroups():
     g2 = groups.loc[groups['ParentID'].isin(groups_level_1['GroupID']), ['GroupID','ParentID','GroupName']].reset_index(drop=True)
     g3 = groups.loc[groups['ParentID'].isin(groups_level_2['GroupID']), ['GroupID','ParentID','GroupName']].reset_index(drop=True)
     
-    #Reconstruct group levels as one pretty, multi-index table
+    #reconstruct group levels as one pretty, multi-index table
     recon3 = pd.merge(groups_level_4, g3, left_on ='ParentID', right_on = 'GroupID' , how='left', suffixes = ['_4','_3'])
     recon2 = pd.merge(recon3, g2, left_on ='ParentID_3', right_on = 'GroupID' , how='left', suffixes = ['_3','_2'])
     recon1 = pd.merge(recon2, g1, left_on ='ParentID', right_on = 'GroupID' , how='left', suffixes = ['_2','_1'])
     prettyg = recon1[['ContextID','GroupID_1','GroupID_2','GroupID_3','GroupID_4','GroupName_1','GroupName_2','GroupName_3','GroupName_4']]
-    prettynames = ['ContextID', 'GroupID_1','GroupID_2','GroupID_3','GroupID_4','Dom_NonDom','Survey','Year','Location']
+    prettynames = ['ContextID', 'GroupID_1','GroupID_2','GroupID_3','GroupID','Dom_NonDom','Survey','Year','Location']
     prettyg.columns = prettynames
     
-    #Create multi-index dataframe
-    allgroups = prettyg.set_index(['GroupID_1','GroupID_2','GroupID_3','GroupID_4']).sort_index()
+    #create multi-index dataframe
+    allgroups = prettyg.set_index(['GroupID_1','GroupID_2','GroupID_3']).sort_index()
     
-    return allgroups
+    if year is None:
+        return allgroups
+    #filter dataframe on year
+    else:
+        stryear = str(year)
+        return allgroups[allgroups['Year']== stryear] 
+
+def getProfileID(year = None):
+    #Get links table
+    links = getData('LinkTable')
+    allprofiles = links[(links.GroupID != 0) & (links.ProfileID != 0)]
+    if year is None:
+        return allprofiles
+    #match GroupIDs to getGroups to get the profile years
+    else:
+        profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
+    return profileid

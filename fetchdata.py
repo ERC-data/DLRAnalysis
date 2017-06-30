@@ -8,15 +8,16 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dlrdb import getData, profilePeriod, getGroups
+from dlrdb import getData, profilePeriod, getGroups, getProfileID
 
-#get all groups
-groups = getGroups()
-#select subset of groups
-groups2000 = groups[groups['Year']=='2000']
+## GROUPS
+groups = getGroups() #get all groups
+g2000 = getGroups(2000) #get groups for 2000
 
-#Get links table
-links = getData('LinkTable')
+## PROFILES
+profiles = getProfileID()
+profiles2000 = getProfileID(2000)
+
 
 #specify and execute query(ies)
 query1 = 'SELECT * FROM [General_LR4].[dbo].[linktable] WHERE ProfileID = 12005320'
