@@ -21,7 +21,7 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename'):
     if querystring == 'SELECT * FROM tablename':
         if tablename is None:
             return print('Specify a valid table from the DLR database')
-        elif tablename == 'profiles':
+        elif tablename == 'Profiletable':
             return print('The entire profiles table is too large to read into python in one go. Use the querystring argument to specify a profile data subset.') 
         else:
             query = 'SELECT * FROM [General_LR4].[dbo].%s' % (tablename)
@@ -76,7 +76,7 @@ def profilePeriod(dataframe, startdate = None, enddate = None):
     #subset dataframe by the specified date range
     df = dataframe.loc[(dataframe['Datefield'] >= startdate) & (dataframe['Datefield'] <= enddate)].reset_index(drop=True)
     #convert strings to category data type to reduce memory usage
-    df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
+    #df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
     return df
 
 def getGroups(year = None):
@@ -129,3 +129,84 @@ def getProfileID(year = None):
     else:
         profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
     return profileid
+
+def getProfiles(year, units = None):
+    plist = list(map(str, getProfileID(year)))
+    if units is None:
+        uom = ''
+    elif units in ['V','A','kVA','kW']:
+        uom = 'AND (puom.Description = \'' + units.strip() + ' avg\')'
+    else:
+        return print('Check spelling and choose V, A, kVA or kW as units, or leave blank to get profiles of all.')
+    #create query string
+    subquery = ' OR pt.ProfileID = '.join(plist)
+    query = 'SELECT pt.ProfileID \
+     ,pt.Datefield \
+     ,pt.Unitsread \
+     ,pt.Valid \
+     ,p.RecorderID \
+     ,p.Active \
+     ,puom.Description \
+     FROM [General_LR4].[dbo].[Profiletable] pt \
+     LEFT JOIN [General_LR4].[dbo].[profiles] p ON pt.ProfileID = p.ProfileId \
+    	LEFT JOIN [General_LR4].[dbo].[ProfileUnitsOfMeasure] puom ON p.[Unit of measurement] = puom.UnitsID \
+    WHERE (pt.ProfileID = ' + subquery + ') ' + uom + '\
+    ORDER BY pt.Datefield, pt.ProfileID'
+    #getting profiles
+    df = getData(querystring = query)
+    #convert strings to category data type to reduce memory usage
+    df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
+    return df
+
+def top1000Profiles(year):
+    
+    plist = list(map(str, getProfileID(year)))[0:9]
+    #create query string
+    subquery = ' OR pt.ProfileID = '.join(plist)
+    query = 'SELECT TOP 1000 pt.ProfileID \
+     ,pt.Datefield \
+     ,pt.Unitsread \
+     ,pt.Valid \
+     ,p.RecorderID \
+     ,p.Active \
+     ,puom.Description \
+     FROM [General_LR4].[dbo].[Profiletable] pt \
+     LEFT JOIN [General_LR4].[dbo].[profiles] p ON pt.ProfileID = p.ProfileId \
+    	LEFT JOIN [General_LR4].[dbo].[ProfileUnitsOfMeasure] puom ON p.[Unit of measurement] = puom.UnitsID \
+    WHERE (pt.ProfileID = ' + subquery + ') \
+    ORDER BY pt.Datefield, pt.ProfileID'
+    #getting profiles
+    df = getData(querystring = query)
+    #convert strings to category data type to reduce memory usage
+    df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
+    return df
+
+def getProfilesOnly(year):
+    
+    plist = list(map(str, getProfileID(year)))
+    #create query string
+    subquery = ' OR pt.ProfileID = '.join(plist)
+    query = 'SELECT pt.ProfileID \
+     ,pt.Datefield \
+     ,pt.Unitsread \
+     ,pt.Valid \
+    FROM [General_LR4].[dbo].[Profiletable] pt \
+    WHERE (pt.ProfileID = ' + subquery + ')\
+    ORDER BY pt.Datefield, pt.ProfileID'
+    #get load profiles
+    profiles = getData(querystring = query)
+    profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
+    #get observation metadata from the profiles table
+    metaprofiles = getData('profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
+    uom = getData('ProfileUnitsOfMeasure')
+    
+    df = pd.merge(profiles, metaprofiles, left_on='ProfileID', right_on='ProfileId')
+    df.drop('ProfileId', axis=1, inplace=True)
+    df.rename(columns={'Unit of measurement':'UoM'}, inplace=True)
+    
+    #convert strings to category data type to reduce memory usage
+    df.loc[:,['ProfileID', 'UoM', 'RecorderID']] = df.loc[:,['ProfileID', 'UoM', 'RecorderID',]].apply(pd.Categorical)
+    cats = list(uom.loc[uom.UnitsID.isin(df['UoM'].cat.categories), 'Description'])
+    df['UoM'].cat.categories = cats
+    
+    return df
