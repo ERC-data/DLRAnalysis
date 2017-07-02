@@ -1,7 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-This file contains functions to fetch data from the Domestic Load Research database. Must be run from a server with a database installation.
+This file contains functions to fetch data from the Domestic Load Research SQL Server database. It must be run from a server with a database installation.
 
+The following functions are defined:
+    getData
+    getProfileID
+    getMetaProfiles
+    profileFetchEst
+    getProfiles
+    getSampleProfiles
+    profilePeriod
+    getGroups
+    
 """
 
 import pandas as pd
@@ -22,7 +32,7 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename'):
         if tablename is None:
             return print('Specify a valid table from the DLR database')
         elif tablename == 'Profiletable':
-            return print('The entire profiles table is too large to read into python in one go. Use the querystring argument to specify a profile data subset.') 
+            return print('The entire profiles table is too large to read into python in one go. Use the getProfiles() function instead.') 
         else:
             query = 'SELECT * FROM [General_LR4].[dbo].%s' % (tablename)
     else:
@@ -42,8 +52,108 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename'):
     #print(df.info())
     return df
 
+def getProfileID(year = None):
+    #Get links table
+    links = getData('LinkTable')
+    allprofiles = links[(links.GroupID != 0) & (links.ProfileID != 0)]
+    if year is None:
+        return allprofiles
+    #match GroupIDs to getGroups to get the profile years
+    else:
+        profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
+    return profileid
+
+def getMetaProfiles(year, units = None):
+    #create list of profiles for the year
+    pids = pd.Series(map(str, getProfileID(year))) 
+    #get observation metadata from the profiles table
+    metaprofiles = getData('profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
+    metaprofiles = metaprofiles[metaprofiles.ProfileId.isin(pids)] #select subset of metaprofiles corresponding to query
+    metaprofiles.rename(columns={'Unit of measurement':'UoM'}, inplace=True)
+    metaprofiles.loc[:,['UoM', 'RecorderID']] = metaprofiles.loc[:,['UoM', 'RecorderID',]].apply(pd.Categorical)
+    puom = getData('ProfileUnitsOfMeasure')
+    cats = list(puom.loc[puom.UnitsID.isin(metaprofiles['UoM'].cat.categories), 'Description'])
+    metaprofiles['UoM'].cat.categories = cats
+
+    if units is None:
+        plist = metaprofiles['ProfileId']
+    elif units in ['V','A','kVA','kW']:
+        uom = units.strip() + ' avg'
+        plist = metaprofiles[metaprofiles.UoM == uom]['ProfileId']
+    else:
+        return print('Check spelling and choose V, A, kVA or kW as units, or leave blank to get profiles of all.')
+    return metaprofiles, plist
+
+def profileFetchEst(year):
+    "This function estimates the number of profiles, fetch time and memory usage to get all profiles for a year."
+    plist = list(map(str, getProfileID(year))) 
+    profs = len(plist)
+    profilefetch = profs*0.7/60
+    profilesize = profs*2.69
+    print('It will take %f minutes to fetch all %d profiles from %d.' % (profilefetch, profs, year))
+    print('The estimated memory usage is %d MB.' % (profilesize))
+
+def getProfiles(year, units = None):
+    "This function fetches load profiles for one calendar year. It takes the year as number and units as string [A, V, kVA, kW] as input."
+##  Get metadata
+    mp, plist = getMetaProfiles(year, units = None)
+    
+## Get profiles from server
+    #create query string
+    subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
+    query = 'SELECT pt.ProfileID \
+     ,pt.Datefield \
+     ,pt.Unitsread \
+     ,pt.Valid \
+    FROM [General_LR4].[dbo].[Profiletable] pt \
+    WHERE (pt.ProfileID = ' + subquery + ') \
+    ORDER BY pt.Datefield, pt.ProfileID'
+    #get load profiles
+    profiles = getData(querystring = query)
+    profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
+
+## Create data output    
+    df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
+    df.drop('ProfileId', axis=1, inplace=True)
+    #convert strings to category data type to reduce memory usage
+    df.loc[:,['ProfileID']] = df.loc[:,['ProfileID']].apply(pd.Categorical)
+    
+    return df
+
+def getSampleProfiles(year):
+    "This function provides a sample of the top 1000 rows that will be returned with the getProfiles() function"
+##  Get metadata
+    mp, plist = getMetaProfiles(year, units = None)
+    mp = mp[0:9]
+    plist = plist[0:9]
+    
+## Get profiles from server
+    #create query string
+    subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
+    query = 'SELECT TOP 1000 pt.ProfileID \
+     ,pt.Datefield \
+     ,pt.Unitsread \
+     ,pt.Valid \
+    FROM [General_LR4].[dbo].[Profiletable] pt \
+    WHERE (pt.ProfileID = ' + subquery + ') \
+    ORDER BY pt.Datefield, pt.ProfileID'
+    #get load profiles
+    profiles = getData(querystring = query)
+    profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
+
+## Create data output    
+    df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
+    df.drop('ProfileId', axis=1, inplace=True)
+    #convert strings to category data type to reduce memory usage
+    df.loc[:,['ProfileID']] = df.loc[:,['ProfileID']].apply(pd.Categorical)
+
+## Provide memory and time estimate for fetching all profiles for the year    
+    profileFetchEst(year)
+    
+    return df
+
 def profilePeriod(dataframe, startdate = None, enddate = None):
-    "This function selects a subset of a dataframe based on a date range." 
+    "This function selects a subset of a profile dataframe based on a date range. Use getProfiles or upload profiles data." 
     "Dates must be formated as 'YYYY-MM-DD'. Days start at 00:00 and end at 23:55"
     
     #print profile date info
@@ -118,95 +228,3 @@ def getGroups(year = None):
     else:
         stryear = str(year)
         return allgroups[allgroups['Year']== stryear] 
-
-def getProfileID(year = None):
-    #Get links table
-    links = getData('LinkTable')
-    allprofiles = links[(links.GroupID != 0) & (links.ProfileID != 0)]
-    if year is None:
-        return allprofiles
-    #match GroupIDs to getGroups to get the profile years
-    else:
-        profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
-    return profileid
-
-def getProfiles(year, units = None):
-    plist = list(map(str, getProfileID(year)))
-    if units is None:
-        uom = ''
-    elif units in ['V','A','kVA','kW']:
-        uom = 'AND (puom.Description = \'' + units.strip() + ' avg\')'
-    else:
-        return print('Check spelling and choose V, A, kVA or kW as units, or leave blank to get profiles of all.')
-    #create query string
-    subquery = ' OR pt.ProfileID = '.join(plist)
-    query = 'SELECT pt.ProfileID \
-     ,pt.Datefield \
-     ,pt.Unitsread \
-     ,pt.Valid \
-     ,p.RecorderID \
-     ,p.Active \
-     ,puom.Description \
-     FROM [General_LR4].[dbo].[Profiletable] pt \
-     LEFT JOIN [General_LR4].[dbo].[profiles] p ON pt.ProfileID = p.ProfileId \
-    	LEFT JOIN [General_LR4].[dbo].[ProfileUnitsOfMeasure] puom ON p.[Unit of measurement] = puom.UnitsID \
-    WHERE (pt.ProfileID = ' + subquery + ') ' + uom + '\
-    ORDER BY pt.Datefield, pt.ProfileID'
-    #getting profiles
-    df = getData(querystring = query)
-    #convert strings to category data type to reduce memory usage
-    df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
-    return df
-
-def top1000Profiles(year):
-    
-    plist = list(map(str, getProfileID(year)))[0:9]
-    #create query string
-    subquery = ' OR pt.ProfileID = '.join(plist)
-    query = 'SELECT TOP 1000 pt.ProfileID \
-     ,pt.Datefield \
-     ,pt.Unitsread \
-     ,pt.Valid \
-     ,p.RecorderID \
-     ,p.Active \
-     ,puom.Description \
-     FROM [General_LR4].[dbo].[Profiletable] pt \
-     LEFT JOIN [General_LR4].[dbo].[profiles] p ON pt.ProfileID = p.ProfileId \
-    	LEFT JOIN [General_LR4].[dbo].[ProfileUnitsOfMeasure] puom ON p.[Unit of measurement] = puom.UnitsID \
-    WHERE (pt.ProfileID = ' + subquery + ') \
-    ORDER BY pt.Datefield, pt.ProfileID'
-    #getting profiles
-    df = getData(querystring = query)
-    #convert strings to category data type to reduce memory usage
-    df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
-    return df
-
-def getProfilesOnly(year):
-    
-    plist = list(map(str, getProfileID(year)))
-    #create query string
-    subquery = ' OR pt.ProfileID = '.join(plist)
-    query = 'SELECT pt.ProfileID \
-     ,pt.Datefield \
-     ,pt.Unitsread \
-     ,pt.Valid \
-    FROM [General_LR4].[dbo].[Profiletable] pt \
-    WHERE (pt.ProfileID = ' + subquery + ')\
-    ORDER BY pt.Datefield, pt.ProfileID'
-    #get load profiles
-    profiles = getData(querystring = query)
-    profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
-    #get observation metadata from the profiles table
-    metaprofiles = getData('profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
-    uom = getData('ProfileUnitsOfMeasure')
-    
-    df = pd.merge(profiles, metaprofiles, left_on='ProfileID', right_on='ProfileId')
-    df.drop('ProfileId', axis=1, inplace=True)
-    df.rename(columns={'Unit of measurement':'UoM'}, inplace=True)
-    
-    #convert strings to category data type to reduce memory usage
-    df.loc[:,['ProfileID', 'UoM', 'RecorderID']] = df.loc[:,['ProfileID', 'UoM', 'RecorderID',]].apply(pd.Categorical)
-    cats = list(uom.loc[uom.UnitsID.isin(df['UoM'].cat.categories), 'Description'])
-    df['UoM'].cat.categories = cats
-    
-    return df

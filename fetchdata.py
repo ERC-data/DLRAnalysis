@@ -7,23 +7,33 @@ Created on Wed Jun 28 16:03:22 2017
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import feather
 
-from dlrdb import getData, profilePeriod, getGroups, getProfileID, getProfiles, get1000Profiles, getProfilesOnly
+from sqldlr import getData, getProfileID, getProfiles, getSampleProfiles, profilePeriod, getGroups
 
-## GROUPS
+def saveAllProfiles(mypath):
+    "This function fetches all profile data and saves it to path as a .feather file. It will take several hours to run!"
+    for i in range(1994,2015):
+        print(i)
+        df = getProfiles(i)
+        path = mypath + 'p' + str(i) + '.feather'
+        print(path)
+        feather.write_dataframe(df, path)
+        
+
+# EXAMPLES
+## Groups
 groups = getGroups() #get all groups
 g2000 = getGroups(2000) #get groups for 2000
 
-## PROFILES
-profiles = getProfileID()
-p2000 = getProfileID(2000)
+## Profiles
+pids = getProfileID()
+pids2000 = getProfileID(2000)
+sp2000 = getSampleProfiles(2000)
+#p1994 = getProfiles(1994)
 
-
-#specify and execute query(ies)
+# Get profiles by specifying and executing query(ies)
 query = 'SELECT * FROM [General_LR4].[dbo].[linktable] WHERE ProfileID = 12005320'
-query2 = 'SELECT * FROM [General_LR4].[dbo].[linktable] WHERE AnswerID = 1004196'
-
-#getting profiles
 df = getData(querystring = query)
 
 #subset profile on date-time
@@ -37,3 +47,17 @@ HourlyA = AvgA.resample('60Min', on='Datefield').mean()
 HourlyA['2012-06-01'].plot()
 
 profiles = pd.crosstab(index=april2012['Datefield'], columns=[april2012['RecorderID'], april2012['ProfileID'], april2012['Description']], values = april2012['Unitsread'], aggfunc = sum)
+
+## Saving and loading
+p1994.to_csv('E:\\Domestic Load Research DB\\Profiles\\p1994.csv', index=False, date_format='%Y-%m-%d %H:%M') #pretty rubbish. CSV can't cope
+load94 = pd.read_csv('E:\\Domestic Load Research DB\\Profiles\\p1994.csv', dtype={'ProfileID':'category', 'RecorderID':'category', 'UoM':'category'}, parse_dates=['Datefield'])
+april1994 = profilePeriod(load94, '1994-04-01', '1994-04-30')
+
+#super fast data storage & retrieval with feather
+#NB NOT FOR LONG TERM STORAGE!!
+sp95 = getSampleProfiles(1995)
+p95 = getProfiles(1995)
+path = 'E:\\Domestic Load Research DB\\Profiles\\p95.feather'
+feather.write_dataframe(p95, path)
+feather95 = feather.read_dataframe(path)
+
