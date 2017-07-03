@@ -34,11 +34,19 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename'):
         elif tablename == 'Profiletable':
             return print('The entire profiles table is too large to read into python in one go. Use the getProfiles() function instead.') 
         else:
-            query = 'SELECT * FROM [General_LR4].[dbo].%s' % (tablename)
+            query = "SELECT * FROM [General_LR4].[dbo].%s" % (tablename)
     else:
         query = querystring
     cursor.execute(query)
-    rows = cursor.fetchall() #fetch all query data 
+    
+    while True:
+        rows = cursor.fetchmany(1000)
+        if not rows:
+            break
+        for r in rows:
+            yield r
+    
+    #rows = cursor.fetchall() #fetch all query data 
     description = cursor.description #get result details
     colnames = [x[0] for x in description] #table column names
 #    datatypes = [x[1] for x in description] #column data types
@@ -48,8 +56,9 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename'):
     for row in rows:
         results.append(dict(zip(colnames, row)))
     df = pd.DataFrame(results)
-    #print("We have fetched a datatable with the following properties for you\n\n")
-    #print(df.info())
+    
+    cnxn.close()
+
     return df
 
 def getProfileID(year = None):
@@ -101,13 +110,13 @@ def getProfiles(year, units = None):
 ## Get profiles from server
     #create query string
     subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
-    query = 'SELECT pt.ProfileID \
+    query = "SELECT pt.ProfileID \
      ,pt.Datefield \
      ,pt.Unitsread \
      ,pt.Valid \
     FROM [General_LR4].[dbo].[Profiletable] pt \
-    WHERE (pt.ProfileID = ' + subquery + ') \
-    ORDER BY pt.Datefield, pt.ProfileID'
+    WHERE (pt.ProfileID = " + subquery + ") \
+    ORDER BY pt.Datefield, pt.ProfileID"
     #get load profiles
     profiles = getData(querystring = query)
     profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
@@ -130,13 +139,13 @@ def getSampleProfiles(year):
 ## Get profiles from server
     #create query string
     subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
-    query = 'SELECT TOP 1000 pt.ProfileID \
+    query = "SELECT TOP 1000 pt.ProfileID \
      ,pt.Datefield \
      ,pt.Unitsread \
      ,pt.Valid \
     FROM [General_LR4].[dbo].[Profiletable] pt \
-    WHERE (pt.ProfileID = ' + subquery + ') \
-    ORDER BY pt.Datefield, pt.ProfileID'
+    WHERE (pt.ProfileID = " + subquery + ") \
+    ORDER BY pt.Datefield, pt.ProfileID"
     #get load profiles
     profiles = getData(querystring = query)
     profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
