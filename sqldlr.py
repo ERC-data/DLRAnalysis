@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains functions to fetch data from the Domestic Load Research SQL Server database. It must be run from a server with a database installation.
+This file contains functions to fetch data from the Domestic Load Research SQL Server database. It must be run from a server with a DLR database installation.
 
 The following functions are defined:
     getData
@@ -70,8 +70,11 @@ def getMetaProfiles(year, units = None):
     elif units in ['V','A','kVA','kW']:
         uom = units.strip() + ' avg'
         plist = metaprofiles[metaprofiles.UoM == uom]['ProfileId']
+    elif units=='Hz':
+        uom = 'Hz'
+        plist = metaprofiles[metaprofiles.UoM == uom]['ProfileId']
     else:
-        return print('Check spelling and choose V, A, kVA or kW as units, or leave blank to get profiles of all.')
+        return print('Check spelling and choose V, A, kVA, Hz or kW as units, or leave blank to get profiles of all.')
     return metaprofiles, plist
 
 def profileFetchEst(year):
@@ -185,6 +188,7 @@ def getGroups(year = None):
     groups['ParentID'].fillna(0, inplace=True)
     groups['ParentID'] = groups['ParentID'].astype('int64').astype('category')
     groups['GroupName'] = groups['GroupName'].map(lambda x: x.strip())
+    #TRY THIS groups['GroupName'] = groups['GroupName'].str.strip()
     
     #Deconstruct groups table apart into levels
     #LEVEL 1 GROUPS: domestic/non-domestic
