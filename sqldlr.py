@@ -17,6 +17,11 @@ The following functions are defined:
 import pandas as pd
 import pyodbc 
 from datetime import datetime
+from sqlalchemy import create_engine 
+
+with open('cnxnstr.txt', 'r') as f: 
+    cnxnstr = f.read().replace('\n', '')
+engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % cnxnstr)
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     "This function fetches a specified table from the DLR database and returns it as a pandas dataframe."
@@ -86,30 +91,35 @@ def profileFetchEst(year):
     print('It will take %f minutes to fetch all %d profiles from %d.' % (profilefetch, profs, year))
     print('The estimated memory usage is %d MB.' % (profilesize))
 
-def getProfiles(year, units = None):
+def getProfiles(year, month = None, units = None):
     "This function fetches load profiles for one calendar year. It takes the year as number and units as string [A, V, kVA, kW] as input."
 ##  Get metadata
     mp, plist = getMetaProfiles(year, units = None)
     
 ## Get profiles from server
     #create query string
-    subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
-    query = "SELECT pt.ProfileID \
-     ,pt.Datefield \
-     ,pt.Unitsread \
-     ,pt.Valid \
-    FROM [General_LR4].[dbo].[Profiletable] pt \
-    WHERE (pt.ProfileID = " + subquery + ") \
-    ORDER BY pt.Datefield, pt.ProfileID"
-    #get load profiles
-    profiles = getData(querystring = query)
-    profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
-
-## Create data output    
-    df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
-    df.drop('ProfileId', axis=1, inplace=True)
-    #convert strings to category data type to reduce memory usage
-    df.loc[:,['ProfileID']] = df.loc[:,['ProfileID']].apply(pd.Categorical)
+    #subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
+    subquery = ', '.join(str(x) for x in plist)
+    for i in range(1,12):
+        try:
+            query = "SELECT pt.ProfileID \
+             ,pt.Datefield \
+             ,pt.Unitsread \
+             ,pt.Valid \
+            FROM [General_LR4].[dbo].[Profiletable] pt \
+            WHERE pt.ProfileID IN " + subquery + " AND MONTH(Datefield) =" + str(i) + "\
+            ORDER BY pt.Datefield, pt.ProfileID"
+            #get load profiles
+            profiles = getData(querystring = query)
+            #profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
+        
+        ## Create data output    
+            df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
+            df.drop('ProfileId', axis=1, inplace=True)
+            #convert strings to category data type to reduce memory usage
+            df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
+        except:
+            pass
     
     return df
 

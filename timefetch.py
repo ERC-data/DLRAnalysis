@@ -18,3 +18,8 @@ def timef(function, params):
     meanfetch = np.mean(np.array(timefetch))
     stdfetch = np.std(np.array(timefetch))
     return meanfetch, stdfetch
+
+## MEMORY
+# To be run in ipython console
+#%load_ext memory_profiler
+#%load_ext memory_profiler
