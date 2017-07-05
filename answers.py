@@ -11,54 +11,85 @@ import numpy as np
 import matplotlib.pyplot as plt
 import feather
 from os import listdir
+from sqldlr import getProfiles
+
+def saveAllProfiles(mypath, yearstart, yearend):
+    "This function fetches all profile data and saves it to path as a .feather file. It will take several hours to run!"
+    for i in range(yearstart, yearend + 1):
+        print(i)
+        df = getProfiles(i)
+        path = mypath + 'p' + str(i) + '.feather'
+        print(path)
+        feather.write_dataframe(df, path)
 
 def getFeathers(filepath = '/home/saintlyvi/Documents/ckan/DLR/DBTables'):
-    "This function"
+    "This function loads all feather tables in directory into workspace."
     files = listdir(filepath)
     names = [f.split('.', 1)[0] for f in files]
-    
     tables = {}
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(filepath + '/' + f)
     return tables
 
 #preparing answer tables    
-ablob = getFeathers().get('answersblob')
-ablob.fillna(np.nan, inplace = True)
-achar = getFeathers().get('answerschar').drop(labels='lock', axis=1)
-anum = getFeathers().get('answersnum').drop(labels='lock', axis=1)
-ans = getFeathers().get('answers').drop(labels='lock', axis=1)
+def getAnswers(dtype = None):
+    "This function returns all answer IDs and their response sets for a selected data type. If dtype is None, answer IDs and their corresponding questionaire IDs are returned instead."
+    if dtype is None:
+        ans = getFeathers().get('answers').drop(labels='lock', axis=1)
+    elif dtype == 'blob':
+        ans = getFeathers().get('answersblob')
+        ans.fillna(np.nan, inplace = True)
+    elif dtype == 'char':
+        ans = getFeathers().get('answerschar').drop(labels='lock', axis=1)
+    elif dtype == 'num':
+        ans = getFeathers().get('answersnum').drop(labels='lock', axis=1)
+    return ans
 
 #preparing question tables
-qu = getFeathers().get('questions').drop(labels='lock', axis=1)
-qu.Datatype = qu.Datatype.astype('category')
-qu.Datatype.cat.categories = ['blob','char','num']
-qnair = getFeathers().get('questionaires').drop(labels='lock', axis=1)
+def getQuestions(dtype = None):
+    "This function gets all questions"
+    qu = getFeathers().get('questions').drop(labels='lock', axis=1)
+    qu.Datatype = qu.Datatype.astype('category')
+    qu.Datatype.cat.categories = ['blob','char','num']
+    if dtype is None:
+        pass
+    else: 
+        qu = qu[qu.Datatype == dtype]
+    return qu
 
-qublob = qu[qu.Datatype == 'blob']
-quchar = qu[qu.Datatype == 'char']
-qunum = qu[qu.Datatype == 'num']
-
-def quSearch(searchterm, questionsdf = qu):
-    result = questionsdf.loc[questionsdf.Question.str.lower().str.find(searchterm)==0, ['Question', 'Datatype','ColumnNo']]
+def quSearch(searchterm = '', qnairid = None, dtype = None):
+    qcons = getFeathers().get('qconstraints').drop(labels='lock', axis=1)
+    qu = getQuestions(dtype)
+    
+    qdf = qu.join(qcons, 'QuestionID', rsuffix='_c') #join question constraints to questions table
+    qnairids = list(getFeathers().get('questionaires')['QuestionaireID']) #get list of valid questionaire IDs
+    if qnairid is None: #gets all relevant queries
+        pass
+    elif qnairid in qnairids: #check that ID is valid if provided
+        qdf = qdf[qdf.QuestionaireID == qnairid] #subset dataframe to relevant ID
+    else:
+        return print('Please select a valid QuestionaireID', qnairids)
+    result = qdf.loc[qdf.Question.str.lower().str.contains(searchterm)==True, ['Question', 'Datatype','QuestionaireID', 'ColumnNo', 'Lower', 'Upper']]
     return result
 
 #split answers by questionaire
-def qnairQuest(QuestionaireID):
-    "This function returns a datadict with all ColumnNo:Question pairs for a particular questionaire"
-    qnairids = list(getFeathers().get('questionaires')['QuestionaireID'])
-    if QuestionaireID in qnairids:
-        pass
-    else:
-        return print('Please select a valid QuestionaireID', qnairids)
-    QnQs = qu[qu['QuestionaireID'] == QuestionaireID]
-    Qblob = dict(zip(QnQs[QnQs.Datatype == 'blob']['ColumnNo'], QnQs[QnQs.Datatype == 'blob']['Question']))
-    Qchar = dict(zip(QnQs[QnQs.Datatype == 'char']['ColumnNo'], QnQs[QnQs.Datatype == 'char']['Question']))
-    Qnum = dict(zip(QnQs[QnQs.Datatype == 'num']['ColumnNo'], QnQs[QnQs.Datatype == 'num']['Question']))
+def qnairQ(qnid = 3):
+    d = {i : quSearch(qnairid = qnid, dtype=i) for i in ['num','blob','char']}
+    return d
+
+def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
+    allans = getAnswers() #get answer IDs for questionaire IDs
+    ans = getAnswers(dtype) #retrieve all responses for data type
+    if dtype == 'num':
+        questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
+        result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])]
+        result = result.iloc[:, list(questions['ColumnNo'])]
+    #elif dtype == 'blob':
+        
+    #elif dtype == 'char':
+    print(questions.Question)
     
-    return {'QnID':QnID, 'Qblob':Qblob, 'Qchar':Qchar, 'Qnum':Qnum}
+    return result 
 
 
-
-
-QnID = ans[ans['AnswerID'] == 34]['QuestionaireID']
+#QnID = ans[ans['AnswerID'] == 34]['QuestionaireID']
