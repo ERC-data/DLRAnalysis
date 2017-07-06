@@ -232,3 +232,8 @@ def getGroups(year = None):
     else:
         stryear = str(year)
         return allgroups[allgroups['Year']== stryear] 
+    
+def getLocations(year):
+    locs = set(l.partition(' ')[2] for l in getGroups(year)['Location'])
+    locations = sorted(list(locs))
+    return locations
