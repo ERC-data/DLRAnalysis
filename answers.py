@@ -80,15 +80,10 @@ def qnairQ(qnid = 3):
 def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     allans = getAnswers() #get answer IDs for questionaire IDs
     ans = getAnswers(dtype) #retrieve all responses for data type
-    if dtype == 'num':
-        questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
-        result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])]
-        result = result.iloc[:, list(questions['ColumnNo'])]
-    #elif dtype == 'blob':
-        
-    #elif dtype == 'char':
+    questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
+    result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])] #subset responses by answer IDs
+    result = result.iloc[:, list(questions['ColumnNo'])]
     print(questions.Question)
-    
     return result 
 
 
