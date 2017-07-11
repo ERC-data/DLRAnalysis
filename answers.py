@@ -82,9 +82,24 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     ans = getAnswers(dtype) #retrieve all responses for data type
     questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
     result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])] #subset responses by answer IDs
-    result = result.iloc[:, list(questions['ColumnNo'])]
+    result = result.iloc[:, [0] +  list(questions['ColumnNo'])]
     print(questions.Question)
     return result 
 
+def getLang(code = None):
+    language = dict(zip(answerSearch(qnairid=5).iloc[:,0], answerSearch(qnairid=5,dtype='char').iloc[:,0]))
+    if code is None:
+        pass
+    else:
+        language = language[code]
+    return language
+
+def getAltE(code = None):
+    altenergy = dict(zip(answerSearch(qnairid=8).iloc[:,0], answerSearch(qnairid=8,dtype='char').iloc[:,0]))
+    if code is None:
+        pass
+    else:
+        altenergy = altenergy[code]
+    return altenergy
 
 #QnID = ans[ans['AnswerID'] == 34]['QuestionaireID']
