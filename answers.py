@@ -22,7 +22,7 @@ def saveAllProfiles(mypath, yearstart, yearend):
         print(path)
         feather.write_dataframe(df, path)
 
-def getFeathers(filepath = 'E:\\Domestic Load Research DB\\DBTables\\'):
+def getFeathers(filepath = '\\DBTables\\'):
     "This function loads all feather tables in filepath into workspace."
     files = glob.glob(filepath + '*.feather')
     names = [f.rpartition('\\')[2].rpartition('.')[0] for f in files]
