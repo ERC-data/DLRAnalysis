@@ -20,14 +20,6 @@ def saveAllProfiles(mypath, yearstart, yearend):
         print(path)
         feather.write_dataframe(df, path)
 
-def savetables(datadict): 
-    #paths = ['E:\\Domestic Load Research DB\\DBTables\\' + k + '.feather' for k in files]
-    keys = datadict.keys()
-    for k in keys:
-        data = datadict[k].fillna(np.nan, inplace = True) #feather doesn't write None type
-        path = 'E:\\Domestic Load Research DB\\DBTables\\' + k + '.feather'
-        feather.write_dataframe(data, path)
-
 # EXAMPLES
 ## Groups
 groups = getGroups() #get all groups
