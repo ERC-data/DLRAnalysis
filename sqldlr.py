@@ -11,13 +11,18 @@ The following functions are defined:
     getSampleProfiles
     profilePeriod
     getGroups
+    getLocation
+    saveTables
+    saveAllProfiles
     
 """
 
 import pandas as pd
+import numpy as np
 import pyodbc 
 from datetime import datetime
 from sqlalchemy import create_engine 
+import feather
 
 with open('cnxnstr.txt', 'r') as f: 
     cnxnstr = f.read().replace('\n', '')
@@ -237,3 +242,22 @@ def getLocations(year = None):
     locs = set(l.partition(' ')[2] for l in getGroups(year)['Location'])
     locations = sorted(list(locs))
     return locations
+
+def saveTables(names, dataframes): 
+    "This function saves a dictionary of name:dataframe items from a list of names and a list of dataframes as feather files. The getData() and getGroups() functions can be used to construct the dataframes."
+    datadict = dict(zip(names, dataframes))
+    keys = datadict.keys()
+    for k in keys:
+        data = datadict[k].fillna(np.nan, inplace = True) #feather doesn't write None type
+        path = '\\DBTables\\' + k + '.feather'
+        feather.write_dataframe(data, path)
+    return
+
+def saveAllProfiles(mypath, yearstart, yearend):
+    "This function fetches all profile data and saves it to path as a .feather file. It will take several hours to run!"
+    for i in range(yearstart, yearend + 1):
+        print(i)
+        df = getProfiles(i)
+        path = mypath + 'p' + str(i) + '.feather'
+        print(path)
+        feather.write_dataframe(df, path)

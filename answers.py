@@ -10,22 +10,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import feather
-from sqldlr import getProfiles
 import glob
 
-def saveAllProfiles(mypath, yearstart, yearend):
-    "This function fetches all profile data and saves it to path as a .feather file. It will take several hours to run!"
-    for i in range(yearstart, yearend + 1):
-        print(i)
-        df = getProfiles(i)
-        path = mypath + 'p' + str(i) + '.feather'
-        print(path)
-        feather.write_dataframe(df, path)
-
-def getFeathers(filepath = '\\DBTables\\'):
+def getFeathers(filepath = '/DBTables/'):
     "This function loads all feather tables in filepath into workspace."
     files = glob.glob(filepath + '*.feather')
-    names = [f.rpartition('\\')[2].rpartition('.')[0] for f in files]
+    names = [f.rpartition('/')[2].rpartition('.')[0] for f in files]
     tables = {}
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(f)
