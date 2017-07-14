@@ -25,7 +25,7 @@ def saveAllProfiles(mypath, yearstart, yearend):
 def getFeathers(filepath = 'E:\\Domestic Load Research DB\\DBTables\\'):
     "This function loads all feather tables in filepath into workspace."
     files = glob.glob(filepath + '*.feather')
-    names = [f.rpartition('\\')[2].rpartition('.')[0] for f in files]
+    names = [f.rpartition('/')[2].rpartition('.')[0] for f in files]
     tables = {}
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(f)
