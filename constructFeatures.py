@@ -10,7 +10,7 @@ from answers import answerSearch
 from sqldlr import getAnswerID
 
 
-features = ['earn', 'water', 'roof', 'wall']
+features = ['earn', 'water', 'roof', 'wall', 'electricity']
 
 def featureFrame(features, year):
     "This function creates a dataframe containing the data for a set of selected features for a given year."
