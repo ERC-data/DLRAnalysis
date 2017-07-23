@@ -73,11 +73,10 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
     result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])] #subset responses by answer IDs
     result = result.iloc[:, [0] +  list(questions['ColumnNo'])]
-    print(questions.Question)
-    return result 
+    return [result, questions[['ColumnNo','Question']]]
 
 def getLang(code = None):
-    language = dict(zip(answerSearch(qnairid=5).iloc[:,1], answerSearch(qnairid=5,dtype='char').iloc[:,1]))
+    language = dict(zip(answerSearch(qnairid=5)[0].iloc[:,1], answerSearch(qnairid=5,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass
     else:
@@ -85,7 +84,7 @@ def getLang(code = None):
     return language
 
 def getAltE(code = None):
-    altenergy = dict(zip(answerSearch(qnairid=8).iloc[:,1], answerSearch(qnairid=8,dtype='char').iloc[:,1]))
+    altenergy = dict(zip(answerSearch(qnairid=8)[0].iloc[:,1], answerSearch(qnairid=8,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass
     else:
