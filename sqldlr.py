@@ -63,6 +63,18 @@ def getProfileID(year = None):
         profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
     return profileid
 
+def getAnswerID(year = None):
+    #Get links table
+    links = getData('LinkTable')
+    allanswers = links[(links.GroupID != 0) & (links.AnswerID != 0)]
+    if year is None:
+        return allanswers
+    #match GroupIDs to getGroups to get the profile years
+    else:
+        answerid = pd.Series(allanswers.loc[allanswers.GroupID.isin(getGroups(year).GroupID), 'AnswerID'].unique())
+    return answerid
+
+
 def getMetaProfiles(year, units = None):
     #create list of profiles for the year
     pids = pd.Series(map(str, getProfileID(year))) 
