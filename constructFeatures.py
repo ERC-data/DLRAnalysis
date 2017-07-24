@@ -28,3 +28,9 @@ def featureFrame(features, year):
     featureqs.reset_index(drop=True, inplace=True)
         
     return [data, featureqs]
+
+
+mydata = featureFrame(features, 2011)[0]
+mydata = mydata.drop(['AnswerID','95'], axis=1)
+cols = ['Hi','Wa','Rm','Wm','Te']
+mydata.columns = cols
