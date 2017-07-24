@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import feather
 import glob
 
-def getFeathers(filepath = '/DBTables/'):
+def getFeathers(filepath = 'E://Domestic Load Research DB//DBTables//'):
     "This function loads all feather tables in filepath into workspace."
     files = glob.glob(filepath + '*.feather')
-    names = [f.rpartition('/')[2].rpartition('.')[0] for f in files]
+    names = [f.rpartition('\\')[2].rpartition('.')[0] for f in files]
     tables = {}
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(f)
@@ -62,7 +62,7 @@ def quSearch(searchterm = '', qnairid = None, dtype = None):
     result = qdf.loc[qdf.Question.str.lower().str.contains(searchterm)==True, ['Question', 'Datatype','QuestionaireID', 'ColumnNo', 'Lower', 'Upper']]
     return result
 
-#split answers by questionaire
+#split answers by question type
 def qnairQ(qnid = 3):
     d = {i : quSearch(qnairid = qnid, dtype=i) for i in ['num','blob','char']}
     return d
@@ -73,11 +73,10 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
     result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])] #subset responses by answer IDs
     result = result.iloc[:, [0] +  list(questions['ColumnNo'])]
-    print(questions.Question)
-    return result 
+    return [result, questions[['ColumnNo','Question']]]
 
 def getLang(code = None):
-    language = dict(zip(answerSearch(qnairid=5).iloc[:,0], answerSearch(qnairid=5,dtype='char').iloc[:,0]))
+    language = dict(zip(answerSearch(qnairid=5)[0].iloc[:,1], answerSearch(qnairid=5,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass
     else:
@@ -85,7 +84,7 @@ def getLang(code = None):
     return language
 
 def getAltE(code = None):
-    altenergy = dict(zip(answerSearch(qnairid=8).iloc[:,0], answerSearch(qnairid=8,dtype='char').iloc[:,0]))
+    altenergy = dict(zip(answerSearch(qnairid=8)[0].iloc[:,1], answerSearch(qnairid=8,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass
     else:
