@@ -1,4 +1,4 @@
-,Question,Datatype,QuestionaireID,ColumnNo,Lower,Upper,anonymise
+QuestionID,Question,Datatype,QuestionaireID,ColumnNo,Lower,Upper,anonymise
 1,What is it?,char,1,1,0,1,0
 3,Schalk,char,2,1,1,50,0
 7,Name of head/household,char,3,1,1,50,1

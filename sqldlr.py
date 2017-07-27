@@ -23,6 +23,7 @@ import pyodbc
 from datetime import datetime
 from sqlalchemy import create_engine 
 import feather
+from os import chdir
 
 with open('cnxnstr.txt', 'r') as f: 
     cnxnstr = f.read().replace('\n', '')
@@ -273,3 +274,14 @@ def saveAllProfiles(mypath, yearstart, yearend):
         path = mypath + 'p' + str(i) + '.feather'
         print(path)
         feather.write_dataframe(df, path)
+        
+def anonAns():
+    "This function fetches survey responses, anonymises them and returns and saves the anonymsed dataset as feather object"
+    ansblob = getData('Answers_blob') #get all blob answers
+    ansblob.set_index('AnswerID', inplace=True)
+    blobqs = pd.read_csv('E://Domestic Load Research DB//DBTables//blobQs.csv')
+    blobqs = blobqs.loc[lambda blobqs: blobqs.anonymise == 1, :]
+    qblobanon = pd.merge(getData('Answers'), blobqs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
+    
+    ansblobcol = answersblob.loc[:, list(qblobanon.ColumnNo.unique().astype(str))]
+    ansblobcol[ansblobcol.index.isin(qblobanon.AnswerID)]
