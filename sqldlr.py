@@ -278,10 +278,11 @@ def saveAllProfiles(mypath, yearstart, yearend):
 def anonAns():
     "This function fetches survey responses, anonymises them and returns and saves the anonymsed dataset as feather object"
     ansblob = getData('Answers_blob') #get all blob answers
-    ansblob.set_index('AnswerID', inplace=True)
     blobqs = pd.read_csv('E://Domestic Load Research DB//DBTables//blobQs.csv')
     blobqs = blobqs.loc[lambda blobqs: blobqs.anonymise == 1, :]
     qblobanon = pd.merge(getData('Answers'), blobqs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
     
-    ansblobcol = answersblob.loc[:, list(qblobanon.ColumnNo.unique().astype(str))]
-    ansblobcol[ansblobcol.index.isin(qblobanon.AnswerID)]
+    for i, rows in qblobanon.iterrows():
+        ansblob.set_value(ansblob[ansblob.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
+        
+    return ansblob
