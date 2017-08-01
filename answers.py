@@ -12,13 +12,15 @@ import matplotlib.pyplot as plt
 import feather
 from glob import glob
 import os
-from pathlib import Path
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 dbtable_path = os.path.join(dir_path, 'DBTables')
 
 def getFeathers(filepath = dbtable_path):
-    "This function loads all feather tables in filepath into workspace."
+    """
+    This function loads all feather tables in filepath into workspace.
+    
+    """
     files = glob(os.path.join(dbtable_path, '*.feather'))
     names = [f.rpartition('.')[0] for f in os.listdir(dbtable_path)]
     tables = {}
@@ -28,7 +30,11 @@ def getFeathers(filepath = dbtable_path):
 
 #preparing answer tables    
 def getAnswers(dtype = None):
-    "This function returns all answer IDs and their response sets for a selected data type. If dtype is None, answer IDs and their corresponding questionaire IDs are returned instead."
+    """
+    This function returns all answer IDs and their response sets for a selected data type. 
+    If dtype is None, answer IDs and their corresponding questionaire IDs are returned instead.
+    
+    """
     if dtype is None:
         ans = getFeathers().get('answers').drop(labels='lock', axis=1)
     elif dtype == 'blob':
@@ -73,7 +79,10 @@ def qnairQ(qnid = 3):
     return d
 
 def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
-    "This function returns
+    """
+    This function returns
+    
+    """
     allans = getAnswers() #get answer IDs for questionaire IDs
     ans = getAnswers(dtype) #retrieve all responses for data type
     questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
@@ -82,7 +91,10 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     return [result, questions[['ColumnNo','Question']]]
 
 def getLang(code = None):
-    "This function returns the language categories"
+    """
+    This function returns the language categories
+    
+    """
     language = dict(zip(answerSearch(qnairid=5)[0].iloc[:,1], answerSearch(qnairid=5,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass
@@ -91,7 +103,10 @@ def getLang(code = None):
     return language
 
 def getAltE(code = None):
-    "This function returns the alternative fuel categories"
+    """
+    This function returns the alternative fuel categories.
+    
+    """
     altenergy = dict(zip(answerSearch(qnairid=8)[0].iloc[:,1], answerSearch(qnairid=8,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass
