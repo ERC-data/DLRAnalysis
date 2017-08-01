@@ -3,19 +3,24 @@
 """
 Created on Tue Jul  4 09:34:08 2017
 
-@author: saintlyvi
+@author: Wiebke Toussaint
 """
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import feather
-import glob
+from glob import glob
+import os
+from pathlib import Path
 
-def getFeathers(filepath = 'E://Domestic Load Research DB//DBTables//'):
+dir_path = os.path.dirname(os.path.realpath(__file__))
+dbtable_path = os.path.join(dir_path, 'DBTables')
+
+def getFeathers(filepath = dbtable_path):
     "This function loads all feather tables in filepath into workspace."
-    files = glob.glob(filepath + '*.feather')
-    names = [f.rpartition('\\')[2].rpartition('.')[0] for f in files]
+    files = glob(os.path.join(dbtable_path, '*.feather'))
+    names = [f.rpartition('.')[0] for f in os.listdir(dbtable_path)]
     tables = {}
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(f)
@@ -27,12 +32,12 @@ def getAnswers(dtype = None):
     if dtype is None:
         ans = getFeathers().get('answers').drop(labels='lock', axis=1)
     elif dtype == 'blob':
-        ans = getFeathers().get('answersblob')
+        ans = getFeathers().get('answers_blob_anon')
         ans.fillna(np.nan, inplace = True)
     elif dtype == 'char':
-        ans = getFeathers().get('answerschar').drop(labels='lock', axis=1)
+        ans = getFeathers().get('answers_char_anon').drop(labels='lock', axis=1)
     elif dtype == 'num':
-        ans = getFeathers().get('answersnum').drop(labels='lock', axis=1)
+        ans = getFeathers().get('answers_num').drop(labels='lock', axis=1)
     return ans
 
 #preparing question tables
@@ -68,6 +73,7 @@ def qnairQ(qnid = 3):
     return d
 
 def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
+    "This function returns
     allans = getAnswers() #get answer IDs for questionaire IDs
     ans = getAnswers(dtype) #retrieve all responses for data type
     questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
@@ -76,6 +82,7 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     return [result, questions[['ColumnNo','Question']]]
 
 def getLang(code = None):
+    "This function returns the language categories"
     language = dict(zip(answerSearch(qnairid=5)[0].iloc[:,1], answerSearch(qnairid=5,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass
@@ -84,6 +91,7 @@ def getLang(code = None):
     return language
 
 def getAltE(code = None):
+    "This function returns the alternative fuel categories"
     altenergy = dict(zip(answerSearch(qnairid=8)[0].iloc[:,1], answerSearch(qnairid=8,dtype='char')[0].iloc[:,1]))
     if code is None:
         pass

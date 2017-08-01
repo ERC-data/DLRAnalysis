@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+
+@author: Wiebke Toussaint
+
 This file contains functions to fetch data from the Domestic Load Research SQL Server database. It must be run from a server with a DLR database installation.
 
 The following functions are defined:
-    getData
+    getData 
     getProfileID
     getMetaProfiles
     profileFetchEst
@@ -14,6 +17,7 @@ The following functions are defined:
     getLocation
     saveTables
     saveAllProfiles
+    anonAns
     
 """
 
@@ -23,63 +27,74 @@ import pyodbc
 from datetime import datetime
 from sqlalchemy import create_engine 
 import feather
-from os import chdir
+import os
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
 
 with open('cnxnstr.txt', 'r') as f: 
     cnxnstr = f.read().replace('\n', '')
 engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % cnxnstr)
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
-    "This function fetches a specified table from the DLR database and returns it as a pandas dataframe."
-    
-    #create connection object
+    """
+    Fetches a specified table from the DLR database and returns it as a pandas dataframe.
+
+    """
+    #connection object:
     with open('cnxnstr.txt', 'r') as f: 
         cnxnstr = f.read().replace('\n', '')
     cnxn = pyodbc.connect(cnxnstr)
     
-    #specify and execute query(ies)
+    #specify and execute query(ies):
     if querystring == "SELECT * FROM tablename":
         if tablename is None:
             return print('Specify a valid table from the DLR database')
         elif tablename == 'Profiletable':
-            return print('The entire profiles table is too large to read into python in one go. Use the getProfiles() function instead.') 
+            return print('The profiles table is too large to read into python in one go. Use the getProfiles() function.') 
         else:
             query = "SELECT * FROM [General_LR4].[dbo].%s" % (tablename)
     else:
         query = querystring
         
-    #read to dataframe    
-    df = pd.read_sql(query, cnxn)
-        
+    df = pd.read_sql(query, cnxn)   #read to dataframe   
     return df
 
 def getProfileID(year = None):
-    #Get links table
+    """
+    Fetches all profile IDs for a given year. None returns all profile IDs.
+    
+    """
     links = getData('LinkTable')
     allprofiles = links[(links.GroupID != 0) & (links.ProfileID != 0)]
     if year is None:
         return allprofiles
-    #match GroupIDs to getGroups to get the profile years
+    #match GroupIDs to getGroups to get the profile years:
     else:
         profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
     return profileid
 
 def getAnswerID(year = None):
-    #Get links table
+    """
+    Fetches all answer IDs for a given year. None returns all answer IDs.
+    
+    """
     links = getData('LinkTable')
     allanswers = links[(links.GroupID != 0) & (links.AnswerID != 0)]
     if year is None:
         return allanswers
-    #match GroupIDs to getGroups to get the profile years
+    #match GroupIDs to getGroups to get the profile years:
     else:
         answerid = pd.Series(allanswers.loc[allanswers.GroupID.isin(getGroups(year).GroupID), 'AnswerID'].unique())
     return answerid
 
-
 def getMetaProfiles(year, units = None):
-    #create list of profiles for the year
+    """
+    Fetches profile meta data. Units must be one of  V, A, kVA, Hz or kW.
+    
+    """
+    #list of profiles for the year:
     pids = pd.Series(map(str, getProfileID(year))) 
-    #get observation metadata from the profiles table
+    #get observation metadata from the profiles table:
     metaprofiles = getData('profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
     metaprofiles = metaprofiles[metaprofiles.ProfileId.isin(pids)] #select subset of metaprofiles corresponding to query
     metaprofiles.rename(columns={'Unit of measurement':'UoM'}, inplace=True)
@@ -101,7 +116,10 @@ def getMetaProfiles(year, units = None):
     return metaprofiles, plist
 
 def profileFetchEst(year):
-    "This function estimates the number of profiles, fetch time and memory usage to get all profiles for a year."
+    """
+    This function estimates the number of profiles, fetch time and memory usage to get all profiles for a year.
+    
+    """
     plist = list(map(str, getProfileID(year))) 
     profs = len(plist)
     profilefetch = profs*0.7/60
@@ -110,13 +128,15 @@ def profileFetchEst(year):
     print('The estimated memory usage is %d MB.' % (profilesize))
 
 def getProfiles(year, month = None, units = None):
-    "This function fetches load profiles for one calendar year. It takes the year as number and units as string [A, V, kVA, kW] as input."
-##  Get metadata
+    """
+    This function fetches load profiles for one calendar year. 
+    It takes the year as number and units as string [A, V, kVA, Hz, kW] as input.
+    
+    """
+    ## Get metadata
     mp, plist = getMetaProfiles(year, units = None)
     
-## Get profiles from server
-    #create query string
-    #subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
+    ## Get profiles from server
     subquery = ', '.join(str(x) for x in plist)
     for i in range(1,12):
         try:
@@ -127,56 +147,51 @@ def getProfiles(year, month = None, units = None):
             FROM [General_LR4].[dbo].[Profiletable] pt \
             WHERE pt.ProfileID IN " + subquery + " AND MONTH(Datefield) =" + str(i) + "\
             ORDER BY pt.Datefield, pt.ProfileID"
-            #get load profiles
             profiles = getData(querystring = query)
             #profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
         
-        ## Create data output    
+            #data output:    
             df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
             df.drop('ProfileId', axis=1, inplace=True)
             #convert strings to category data type to reduce memory usage
             df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
         except:
             pass
-    
+
     return df
 
 def getSampleProfiles(year):
-    "This function provides a sample of the top 1000 rows that will be returned with the getProfiles() function"
-##  Get metadata
+    """
+    This function provides a sample of the top 1000 rows that will be returned with the getProfiles() function
+    
+    """
+    ## Get metadata
     mp, plist = getMetaProfiles(year, units = None)
     mp = mp[0:9]
     plist = plist[0:9]
     
-## Get profiles from server
-    #create query string
-    subquery = ' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
-    query = "SELECT TOP 1000 pt.ProfileID \
-     ,pt.Datefield \
-     ,pt.Unitsread \
-     ,pt.Valid \
-    FROM [General_LR4].[dbo].[Profiletable] pt \
-    WHERE (pt.ProfileID = " + subquery + ") \
-    ORDER BY pt.Datefield, pt.ProfileID"
-    #get load profiles
+    ## Get profiles from server
+    subquery = ', '.join(str(x) for x in plist) #' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
+    query = "SELECT TOP 1000 pt.ProfileID, pt.Datefield, pt.Unitsread, pt.Valid FROM [General_LR4].[dbo].[Profiletable] pt WHERE (pt.ProfileID = " + subquery + ") ORDER BY pt.Datefield, pt.ProfileID"
     profiles = getData(querystring = query)
     profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
 
-## Create data output    
+    ## Create data output    
     df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
     df.drop('ProfileId', axis=1, inplace=True)
-    #convert strings to category data type to reduce memory usage
-    df.loc[:,['ProfileID']] = df.loc[:,['ProfileID']].apply(pd.Categorical)
+    df.loc[:,['ProfileID']] = df.loc[:,['ProfileID']].apply(pd.Categorical)     #convert to category type to reduce memory
 
-## Provide memory and time estimate for fetching all profiles for the year    
+    ## Provide memory and time estimate for fetching all profiles for the year    
     profileFetchEst(year)
     
     return df
 
 def profilePeriod(dataframe, startdate = None, enddate = None):
-    "This function selects a subset of a profile dataframe based on a date range. Use getProfiles or upload profiles data." 
-    "Dates must be formated as 'YYYY-MM-DD'. Days start at 00:00 and end at 23:55"
+    """
+    This function selects a subset of a profile dataframe based on a date range. Use getProfiles or upload profiles data. 
+    Dates must be formated as 'YYYY-MM-DD'. Days start at 00:00 and end at 23:55
     
+    """
     #print profile date info
     dataStart = dataframe['Datefield'].min()
     dataEnd = dataframe['Datefield'].max()
@@ -211,7 +226,10 @@ def profilePeriod(dataframe, startdate = None, enddate = None):
     return df
 
 def getGroups(year = None):
-    "This function performs some massive Groups wrangling"
+    """
+    This function performs some massive Groups wrangling
+    
+    """
     groups = getData('Groups')
     groups['ParentID'].fillna(0, inplace=True)
     groups['ParentID'] = groups['ParentID'].astype('int64').astype('category')
@@ -252,22 +270,30 @@ def getGroups(year = None):
         return allgroups[allgroups['Year']== stryear] 
     
 def getLocations(year = None):
+    "This function returns all survey locations for a fiven year."   
     locs = set(l.partition(' ')[2] for l in getGroups(year)['Location'])
     locations = sorted(list(locs))
     return locations
 
 def saveTables(names, dataframes): 
-    "This function saves a dictionary of name:dataframe items from a list of names and a list of dataframes as feather files. The getData() and getGroups() functions can be used to construct the dataframes."
+    """
+    This function saves a dictionary of name:dataframe items from a list of names and a list of dataframes as feather files.
+    The getData() and getGroups() functions can be used to construct the dataframes.
+    
+    """
     datadict = dict(zip(names, dataframes))
-    keys = datadict.keys()
-    for k in keys:
-        data = datadict[k].fillna(np.nan, inplace = True) #feather doesn't write None type
-        path = '\\DBTables\\' + k + '.feather'
+    for k in datadict.keys():
+        data = datadict[k].fillna(np.nan) #feather doesn't write None type
+        path = os.path.join(dir_path, 'DBTables', k + '.feather')
         feather.write_dataframe(data, path)
     return
 
 def saveAllProfiles(mypath, yearstart, yearend):
-    "This function fetches all profile data and saves it to path as a .feather file. It will take several hours to run!"
+    """
+    This function fetches all profile data and saves it to path as a .feather file. 
+    ATTENTION: It will take several hours to run!
+    
+    """
     for i in range(yearstart, yearend + 1):
         print(i)
         df = getProfiles(i)
@@ -276,13 +302,19 @@ def saveAllProfiles(mypath, yearstart, yearend):
         feather.write_dataframe(df, path)
         
 def anonAns():
-    "This function fetches survey responses, anonymises them and returns and saves the anonymsed dataset as feather object"
-    ansblob = getData('Answers_blob') #get all blob answers
-    blobqs = pd.read_csv('E://Domestic Load Research DB//DBTables//blobQs.csv')
-    blobqs = blobqs.loc[lambda blobqs: blobqs.anonymise == 1, :]
-    qblobanon = pd.merge(getData('Answers'), blobqs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
+    """
+    This function fetches survey responses, anonymises them and returns and saves the anonymsed dataset as feather object
     
-    for i, rows in qblobanon.iterrows():
-        ansblob.set_value(ansblob[ansblob.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
+    """
+    anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv'}    
+    for k,v in anstables.items():
+        a = getData(k) #get all answers
+        qs = pd.read_csv(os.path.join(dir_path, v))
+        qs = qs.loc[lambda qs: qs.anonymise == 1, :]
+        qanon = pd.merge(getData('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
         
-    return ansblob
+        for i, rows in qanon.iterrows():
+            a.set_value(a[a.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
+        
+        saveTables([k.lower() + '_anon'],[a]) #saves answers as feather object
+    return
