@@ -30,6 +30,7 @@ import feather
 import os
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
+parent_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
 
 with open('cnxnstr.txt', 'r') as f: 
     cnxnstr = f.read().replace('\n', '')
@@ -284,7 +285,8 @@ def saveTables(names, dataframes):
     datadict = dict(zip(names, dataframes))
     for k in datadict.keys():
         data = datadict[k].fillna(np.nan) #feather doesn't write None type
-        path = os.path.join(dir_path, 'DBTables', k + '.feather')
+        os.makedirs(os.path.join(parent_dir, 'data', 'tables') , exist_ok=True)
+        path = os.path.join(parent_dir, 'data', 'tables', k + '.feather')
         feather.write_dataframe(data, path)
     return
 
@@ -303,13 +305,13 @@ def saveAllProfiles(mypath, yearstart, yearend):
         
 def anonAns():
     """
-    This function fetches survey responses, anonymises them and returns and saves the anonymsed dataset as feather object
+    This function fetches survey responses and anonymises them, then returns and saves the anonymsed dataset as feather object
     
     """
     anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv'}    
     for k,v in anstables.items():
         a = getData(k) #get all answers
-        qs = pd.read_csv(os.path.join(dir_path, v))
+        qs = pd.read_csv(os.path.join(parent_dir,'data','anonymise', v))
         qs = qs.loc[lambda qs: qs.anonymise == 1, :]
         qanon = pd.merge(getData('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
         

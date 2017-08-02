@@ -1,3 +1,9 @@
+This repository should be cloned as the 'src' directory within a project parent directory. 
+To run the scripts without a MSSQL database installation of the DLR project, access to a protected data repository is required. 
+You can request access to this repo from @saintlyvi wiebke.toussaint@uct.ac.za
+
+-----
+
 Methodology for DLR DB data processing and anonymising
 
 1. use functions in sqldlr.py to get tables:

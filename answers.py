@@ -4,26 +4,27 @@
 Created on Tue Jul  4 09:34:08 2017
 
 @author: Wiebke Toussaint
+
+Answer query script: This script contains functions to query and manipulate DLR survey answer sets. It references datasets that must be stored in a /data/tables subdirectory in the parent directory.
+
 """
 
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import feather
 from glob import glob
 import os
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-par_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
-dbtable_path = os.path.join(dir_path, 'DBTables')
+parent_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
+datatbl_dir = os.path.join(parent_dir, 'data', 'tables')
 
-def getFeathers(filepath = dbtable_path):
+def getFeathers(filepath = datatbl_dir):
     """
     This function loads all feather tables in filepath into workspace.
     
     """
-    files = glob(os.path.join(dbtable_path, '*.feather'))
-    names = [f.rpartition('.')[0] for f in os.listdir(dbtable_path)]
+    files = glob(os.path.join(datatbl_dir, '*.feather'))
+    names = [f.rpartition('.')[0] for f in os.listdir(datatbl_dir)]
     tables = {}
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(f)
