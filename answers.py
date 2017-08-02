@@ -14,6 +14,7 @@ from glob import glob
 import os
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
+par_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
 dbtable_path = os.path.join(dir_path, 'DBTables')
 
 def getFeathers(filepath = dbtable_path):
