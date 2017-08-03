@@ -10,6 +10,7 @@ Answer query script: This script contains functions to query and manipulate DLR 
 """
 
 import numpy as np
+import pandas as pd
 import feather
 from glob import glob
 import os
@@ -29,6 +30,21 @@ def getFeathers(filepath = datatbl_dir):
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(f)
     return tables
+
+def idYear(year = 2014, id_name = 'AnswerID'):
+    """
+    Subsets Answer or Profile IDs by year. Year input can be number or string. id_name is AnswerID or ProfileID.
+    """
+    if isinstance(year, str):
+        pass
+    else:
+        year = str(year)
+    groups = getFeathers().get('groups')
+    links = getFeathers().get('links')
+    all_ids = links[(links.GroupID != 0) & (links[id_name] != 0)]
+    id_select = groups[groups.Year==year]['GroupID']
+    ids = pd.Series(all_ids.loc[all_ids.GroupID.isin(id_select), id_name].unique())
+    return ids
 
 #preparing question tables
 def getQuestions(dtype = None):
@@ -80,7 +96,7 @@ def qnairQ(qnid = 3):
 #preparing answer tables    
 def getAnswers(dtype = None):
     """
-    This function returns all answer IDs and their response sets for a selected data type. 
+    This function returns all answer IDs and their question responses for a selected data type. 
     If dtype is None, answer IDs and their corresponding questionaire IDs are returned instead.
     
     """
