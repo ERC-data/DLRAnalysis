@@ -30,6 +30,53 @@ def getFeathers(filepath = datatbl_dir):
         tables[n] = feather.read_dataframe(f)
     return tables
 
+#preparing question tables
+def getQuestions(dtype = None):
+    """
+    This function gets all questions.
+    
+    """
+    qu = getFeathers().get('questions').drop(labels='lock', axis=1)
+    qu.Datatype = qu.Datatype.astype('category')
+    qu.Datatype.cat.categories = ['blob','char','num']
+    if dtype is None:
+        pass
+    else: 
+        qu = qu[qu.Datatype == dtype]
+    return qu
+
+def quSearch(searchterm = '', qnairid = None, dtype = None):
+    """
+    Searches questions for a search term, taking questionaire ID and question data type (num, blob, char) as input. 
+    A single search term can be specified as a string, or a list of search terms as list.
+    
+    """
+    if isinstance(searchterm, list):
+        pass
+    else:
+        searchterm = [searchterm]
+    searchterm = [s.lower() for s in searchterm]
+    qcons = getFeathers().get('qconstraints').drop(labels='lock', axis=1)
+    qu = getQuestions(dtype)
+    qdf = qu.join(qcons, 'QuestionID', rsuffix='_c') #join question constraints to questions table
+    qnairids = list(getFeathers().get('questionaires')['QuestionaireID']) #get list of valid questionaire IDs
+    if qnairid is None: #gets all relevant queries
+        pass
+    elif qnairid in qnairids: #check that ID is valid if provided
+        qdf = qdf[qdf.QuestionaireID == qnairid] #subset dataframe to relevant ID
+    else:
+        return print('Please select a valid QuestionaireID', qnairids)
+    result = qdf.loc[qdf.Question.str.lower().str.contains('|'.join(searchterm)), ['Question', 'Datatype','QuestionaireID', 'ColumnNo', 'Lower', 'Upper']]
+    return result
+
+def qnairQ(qnid = 3):
+    """
+    Creates a dict with items containing questions by type (num, blob, char).
+    
+    """
+    d = {i : quSearch(qnairid = qnid, dtype=i) for i in ['num','blob','char']}
+    return d
+
 #preparing answer tables    
 def getAnswers(dtype = None):
     """
@@ -48,37 +95,6 @@ def getAnswers(dtype = None):
         ans = getFeathers().get('answers_num').drop(labels='lock', axis=1)
     return ans
 
-#preparing question tables
-def getQuestions(dtype = None):
-    "This function gets all questions"
-    qu = getFeathers().get('questions').drop(labels='lock', axis=1)
-    qu.Datatype = qu.Datatype.astype('category')
-    qu.Datatype.cat.categories = ['blob','char','num']
-    if dtype is None:
-        pass
-    else: 
-        qu = qu[qu.Datatype == dtype]
-    return qu
-
-def quSearch(searchterm = '', qnairid = None, dtype = None):
-    qcons = getFeathers().get('qconstraints').drop(labels='lock', axis=1)
-    qu = getQuestions(dtype)
-    
-    qdf = qu.join(qcons, 'QuestionID', rsuffix='_c') #join question constraints to questions table
-    qnairids = list(getFeathers().get('questionaires')['QuestionaireID']) #get list of valid questionaire IDs
-    if qnairid is None: #gets all relevant queries
-        pass
-    elif qnairid in qnairids: #check that ID is valid if provided
-        qdf = qdf[qdf.QuestionaireID == qnairid] #subset dataframe to relevant ID
-    else:
-        return print('Please select a valid QuestionaireID', qnairids)
-    result = qdf.loc[qdf.Question.str.lower().str.contains(searchterm)==True, ['Question', 'Datatype','QuestionaireID', 'ColumnNo', 'Lower', 'Upper']]
-    return result
-
-#split answers by question type
-def qnairQ(qnid = 3):
-    d = {i : quSearch(qnairid = qnid, dtype=i) for i in ['num','blob','char']}
-    return d
 
 def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     """
@@ -91,6 +107,13 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])] #subset responses by answer IDs
     result = result.iloc[:, [0] +  list(questions['ColumnNo'])]
     return [result, questions[['ColumnNo','Question']]]
+
+def getLocations(year = '2014'):
+    "This function returns all survey locations for a given year."
+    groups = getFeathers().get('groups')
+    locs = set(l.partition(' ')[2] for l in groups[groups.Year==year]['Location'])
+    locations = sorted(list(locs))
+    return locations 
 
 def getLang(code = None):
     """
