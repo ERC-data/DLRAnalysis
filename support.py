@@ -19,6 +19,13 @@ The following functions are defined:
     saveAllProfiles
     anonAns
     
+SOME EXAMPLES 
+
+# Using getData with SQL queries:
+
+query = 'SELECT * FROM [General_LR4].[dbo].[linktable] WHERE ProfileID = 12005320'
+df = getData(querystring = query)
+    
 """
 
 import pandas as pd
@@ -32,7 +39,7 @@ import os
 dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
 
-with open('cnxnstr.txt', 'r') as f: 
+with open('cnxnstr.test.txt', 'r') as f: 
     cnxnstr = f.read().replace('\n', '')
 engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % cnxnstr)
 
@@ -42,7 +49,7 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize
 
     """
     #connection object:
-    with open('cnxnstr.txt', 'r') as f: 
+    with open('cnxnstr.test.txt', 'r') as f: 
         cnxnstr = f.read().replace('\n', '')
     cnxn = pyodbc.connect(cnxnstr)
     
@@ -269,12 +276,6 @@ def getGroups(year = None):
     else:
         stryear = str(year)
         return allgroups[allgroups['Year']== stryear] 
-    
-def getLocations(year = None):
-    "This function returns all survey locations for a fiven year."   
-    locs = set(l.partition(' ')[2] for l in getGroups(year)['Location'])
-    locations = sorted(list(locs))
-    return locations
 
 def saveTables(names, dataframes): 
     """
