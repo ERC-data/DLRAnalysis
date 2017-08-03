@@ -39,7 +39,7 @@ import os
 dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
 
-with open('cnxnstr.test.txt', 'r') as f: 
+with open('cnxnstr.txt', 'r') as f: 
     cnxnstr = f.read().replace('\n', '')
 engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % cnxnstr)
 
@@ -49,7 +49,7 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize
 
     """
     #connection object:
-    with open('cnxnstr.test.txt', 'r') as f: 
+    with open('cnxnstr.txt', 'r') as f: 
         cnxnstr = f.read().replace('\n', '')
     cnxn = pyodbc.connect(cnxnstr)
     
@@ -81,19 +81,14 @@ def getProfileID(year = None):
         profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
     return profileid
 
-def getAnswerID(year = None):
+def getAnswerID():
     """
     Fetches all answer IDs for a given year. None returns all answer IDs.
     
     """
     links = getData('LinkTable')
     allanswers = links[(links.GroupID != 0) & (links.AnswerID != 0)]
-    if year is None:
-        return allanswers
-    #match GroupIDs to getGroups to get the profile years:
-    else:
-        answerid = pd.Series(allanswers.loc[allanswers.GroupID.isin(getGroups(year).GroupID), 'AnswerID'].unique())
-    return answerid
+    return allanswers
 
 def getMetaProfiles(year, units = None):
     """
