@@ -13,18 +13,19 @@ import numpy as np
 import feather
 from glob import glob
 import os
+from pathlib import Path
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-parent_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
-datatbl_dir = os.path.join(parent_dir, 'data', 'tables')
+src_dir = Path(__file__).parents[0]
+dlrdb_dir = Path(__file__).parents[1]
+data_dir = os.path.join(dlrdb_dir, 'data', 'tables')
 
-def getFeathers(filepath = datatbl_dir):
+def getFeathers(filepath = data_dir):
     """
     This function loads all feather tables in filepath into workspace.
     
     """
-    files = glob(os.path.join(datatbl_dir, '*.feather'))
-    names = [f.rpartition('.')[0] for f in os.listdir(datatbl_dir)]
+    files = glob(os.path.join(data_dir, '*.feather'))
+    names = [f.rpartition('.')[0] for f in os.listdir(data_dir)]
     tables = {}
     for n, f in zip(names, files):
         tables[n] = feather.read_dataframe(f)

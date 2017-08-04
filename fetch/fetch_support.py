@@ -32,16 +32,13 @@ import pandas as pd
 import numpy as np
 import pyodbc 
 from datetime import datetime
-from sqlalchemy import create_engine 
 import feather
 import os
+from pathlib import Path
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-parent_dir = os.path.abspath(os.path.join(dir_path, os.pardir))
-
-with open('cnxnstr.txt', 'r') as f: 
-    cnxnstr = f.read().replace('\n', '')
-engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % cnxnstr)
+fetch_dir = Path(__file__).parents[0]
+src_dir = Path(__file__).parents[1]
+dlrdb_dir = Path(__file__).parents[2]
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """
@@ -92,7 +89,7 @@ def getAnswerID():
 
 def getMetaProfiles(year, units = None):
     """
-    Fetches profile meta data. Units must be one of  V, A, kVA, Hz or kW.
+    Fetches profile meta data. Units must be one of  V or A. From 2009 onwards kVA, Hz and kW are also available.
     
     """
     #list of profiles for the year:
@@ -118,37 +115,26 @@ def getMetaProfiles(year, units = None):
         return print('Check spelling and choose V, A, kVA, Hz or kW as units, or leave blank to get profiles of all.')
     return metaprofiles, plist
 
-def profileFetchEst(year):
-    """
-    This function estimates the number of profiles, fetch time and memory usage to get all profiles for a year.
-    
-    """
-    plist = list(map(str, getProfileID(year))) 
-    profs = len(plist)
-    profilefetch = profs*0.7/60
-    profilesize = profs*2.69
-    print('It will take %f minutes to fetch all %d profiles from %d.' % (profilefetch, profs, year))
-    print('The estimated memory usage is %d MB.' % (profilesize))
 
-def getProfiles(year, month = None, units = None):
+def getProfiles(year, units = 'kW'):
     """
     This function fetches load profiles for one calendar year. 
     It takes the year as number and units as string [A, V, kVA, Hz, kW] as input.
     
     """
     ## Get metadata
-    mp, plist = getMetaProfiles(year, units = None)
+    mp, plist = getMetaProfiles(year, units)
     
     ## Get profiles from server
     subquery = ', '.join(str(x) for x in plist)
-    for i in range(1,12):
-        try:
+    for i in range(1,13):
+#        try:
             query = "SELECT pt.ProfileID \
              ,pt.Datefield \
              ,pt.Unitsread \
              ,pt.Valid \
             FROM [General_LR4].[dbo].[Profiletable] pt \
-            WHERE pt.ProfileID IN " + subquery + " AND MONTH(Datefield) =" + str(i) + "\
+            WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(i) + "\
             ORDER BY pt.Datefield, pt.ProfileID"
             profiles = getData(querystring = query)
             #profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
@@ -157,11 +143,16 @@ def getProfiles(year, month = None, units = None):
             df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
             df.drop('ProfileId', axis=1, inplace=True)
             #convert strings to category data type to reduce memory usage
-            df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
-        except:
-            pass
-
-    return df
+            df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)      
+            
+            dir_path = os.path.join(dlrdb_dir, 'profiles', str(year), str(year) + '-' + str(i))
+            os.makedirs(dir_path , exist_ok=True)
+            path = os.path.join(dir_path, str(year) + '-' + str(i) + '_' + str(units) + '.feather')
+            print(path)
+            feather.write_dataframe(df, path)
+#        except:
+#            pass
+    return
 
 def getSampleProfiles(year):
     """
@@ -170,12 +161,12 @@ def getSampleProfiles(year):
     """
     ## Get metadata
     mp, plist = getMetaProfiles(year, units = None)
-    mp = mp[0:9]
-    plist = plist[0:9]
+    mp = mp[0:1]
+    plist = plist[0:1]
     
     ## Get profiles from server
     subquery = ', '.join(str(x) for x in plist) #' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
-    query = "SELECT TOP 1000 pt.ProfileID, pt.Datefield, pt.Unitsread, pt.Valid FROM [General_LR4].[dbo].[Profiletable] pt WHERE (pt.ProfileID = " + subquery + ") ORDER BY pt.Datefield, pt.ProfileID"
+    query = "SELECT TOP 1000 pt.ProfileID, pt.Datefield, pt.Unitsread, pt.Valid FROM [General_LR4].[dbo].[Profiletable] pt WHERE pt.ProfileID IN (" + subquery + ") ORDER BY pt.Datefield, pt.ProfileID"
     profiles = getData(querystring = query)
     profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
 
@@ -183,11 +174,25 @@ def getSampleProfiles(year):
     df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
     df.drop('ProfileId', axis=1, inplace=True)
     df.loc[:,['ProfileID']] = df.loc[:,['ProfileID']].apply(pd.Categorical)     #convert to category type to reduce memory
-
-    ## Provide memory and time estimate for fetching all profiles for the year    
-    profileFetchEst(year)
-    
     return df
+
+def getProfileStart(year):
+    """
+    This function provides a sample of the top 1000 rows that will be returned with the getProfiles() function
+    
+    """
+    ## Get metadata
+    mp, plist = getMetaProfiles(year, units = None)
+    mp = mp[0:1]
+    plist = plist[0:1]
+    
+    ## Get profiles from server
+    subquery = ', '.join(str(x) for x in plist) #' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
+    query = "SELECT TOP 1 pt.ProfileID, pt.Datefield, pt.Unitsread, pt.Valid FROM [General_LR4].[dbo].[Profiletable] pt WHERE pt.ProfileID IN (" + subquery + ") ORDER BY pt.Datefield, pt.ProfileID"
+    profiles = getData(querystring = query)
+    year = profiles.loc[0, 'Datefield'].year
+    month = profiles.loc[0, 'Datefield'].month
+    return year, month
 
 def profilePeriod(dataframe, startdate = None, enddate = None):
     """
@@ -281,12 +286,12 @@ def saveTables(names, dataframes):
     datadict = dict(zip(names, dataframes))
     for k in datadict.keys():
         data = datadict[k].fillna(np.nan) #feather doesn't write None type
-        os.makedirs(os.path.join(parent_dir, 'data', 'tables') , exist_ok=True)
-        path = os.path.join(parent_dir, 'data', 'tables', k + '.feather')
+        os.makedirs(os.path.join(dlrdb_dir, 'data', 'tables') , exist_ok=True)
+        path = os.path.join(dlrdb_dir, 'data', 'tables', k + '.feather')
         feather.write_dataframe(data, path)
     return
 
-def saveAllProfiles(mypath, yearstart, yearend):
+def saveProfiles(mypath, yearstart, yearend):
     """
     This function fetches all profile data and saves it to path as a .feather file. 
     ATTENTION: It will take several hours to run!
@@ -307,7 +312,7 @@ def anonAns():
     anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv'}    
     for k,v in anstables.items():
         a = getData(k) #get all answers
-        qs = pd.read_csv(os.path.join(parent_dir,'data','anonymise', v))
+        qs = pd.read_csv(os.path.join(dlrdb_dir,'data','anonymise', v))
         qs = qs.loc[lambda qs: qs.anonymise == 1, :]
         qanon = pd.merge(getData('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
         
