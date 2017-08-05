@@ -89,13 +89,14 @@ def getAnswerID():
 
 def getMetaProfiles(year, units = None):
     """
-    Fetches profile meta data. Units must be one of  V or A. From 2009 onwards kVA, Hz and kW are also available.
+    Fetches profile meta data. Units must be one of  V or A. From 2009 onwards kVA, Hz and kW have also been measured.
     
     """
     #list of profiles for the year:
     pids = pd.Series(map(str, getProfileID(year))) 
     #get observation metadata from the profiles table:
     metaprofiles = getData('profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
+    metaprofiles['Unit of measurement'].dropna(inplace=True)
     metaprofiles = metaprofiles[metaprofiles.ProfileId.isin(pids)] #select subset of metaprofiles corresponding to query
     metaprofiles.rename(columns={'Unit of measurement':'UoM'}, inplace=True)
     metaprofiles.loc[:,['UoM', 'RecorderID']] = metaprofiles.loc[:,['UoM', 'RecorderID',]].apply(pd.Categorical)
@@ -116,10 +117,12 @@ def getMetaProfiles(year, units = None):
     return metaprofiles, plist
 
 
-def getProfiles(year, units = 'kW'):
+def getProfiles(year, units = 'A'):
     """
     This function fetches load profiles for one calendar year. 
-    It takes the year as number and units as string [A, V, kVA, Hz, kW] as input.
+    It takes the year as number and units as string:
+        [A, V] for 1994 - 2008 
+        [A, V, kVA, Hz, kW] for 2009 - 2014
     
     """
     ## Get metadata
@@ -128,13 +131,13 @@ def getProfiles(year, units = 'kW'):
     ## Get profiles from server
     subquery = ', '.join(str(x) for x in plist)
     for i in range(1,13):
-#        try:
+        try:
             query = "SELECT pt.ProfileID \
              ,pt.Datefield \
              ,pt.Unitsread \
              ,pt.Valid \
             FROM [General_LR4].[dbo].[Profiletable] pt \
-            WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(i) + "\
+            WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(i) + " \
             ORDER BY pt.Datefield, pt.ProfileID"
             profiles = getData(querystring = query)
             #profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
@@ -150,8 +153,9 @@ def getProfiles(year, units = 'kW'):
             path = os.path.join(dir_path, str(year) + '-' + str(i) + '_' + str(units) + '.feather')
             print(path)
             feather.write_dataframe(df, path)
-#        except:
-#            pass
+            print('Write success')
+        except:
+            pass
     return
 
 def getSampleProfiles(year):

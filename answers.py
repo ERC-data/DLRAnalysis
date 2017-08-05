@@ -28,7 +28,10 @@ def getFeathers(filepath = data_dir):
     names = [f.rpartition('.')[0] for f in os.listdir(data_dir)]
     tables = {}
     for n, f in zip(names, files):
-        tables[n] = feather.read_dataframe(f)
+        try:
+            tables[n] = feather.read_dataframe(f)
+        except:
+            pass
     return tables
 
 #preparing question tables
