@@ -31,7 +31,6 @@ df = getData(querystring = query)
 import pandas as pd
 import numpy as np
 import pyodbc 
-from datetime import datetime
 import feather
 import os
 from pathlib import Path
@@ -116,6 +115,16 @@ def getMetaProfiles(year, units = None):
         return print('Check spelling and choose V, A, kVA, Hz or kW as units, or leave blank to get profiles of all.')
     return metaprofiles, plist
 
+def writeProfile(df, group_year, profile_year, profile_month, units, dlrdb_sub_dir):
+    """
+    Creates folder structure and writes profile to feather file.
+    """
+    dir_path = os.path.join(dlrdb_dir, dlrdb_sub_dir, str(group_year), str(profile_year) + '-' + str(profile_month))
+    os.makedirs(dir_path , exist_ok=True)
+    path = os.path.join(dir_path, str(profile_year) + '-' + str(profile_month) + '_' + str(units) + '.feather')
+    print(path)
+    feather.write_dataframe(df, path)
+    print('Write success')    
 
 def getProfiles(year, units = 'A'):
     """
@@ -146,14 +155,20 @@ def getProfiles(year, units = 'A'):
             df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
             df.drop('ProfileId', axis=1, inplace=True)
             #convert strings to category data type to reduce memory usage
-            df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)      
+            df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
             
-            dir_path = os.path.join(dlrdb_dir, 'profiles', str(year), str(year) + '-' + str(i))
-            os.makedirs(dir_path , exist_ok=True)
-            path = os.path.join(dir_path, str(year) + '-' + str(i) + '_' + str(units) + '.feather')
-            print(path)
-            feather.write_dataframe(df, path)
-            print('Write success')
+            head_year = df.head(1).Datefield.dt.year[0]
+            tail_year = df.tail(1).Datefield.dt.year[len(df)-1]
+            profile_month = df.Datefield[0].month
+            
+            if head_year == tail_year: #check if dataframe contains profiles for two years
+                writeProfile(df, year, head_year, profile_month, units, 'profiles')
+            else:
+                #split dataframe into two years and save separately
+                head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
+                writeProfile(head_df, year, head_year, profile_month, units, 'profiles')               
+                tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
+                writeProfile(tail_df, year, tail_year, profile_month, units, 'profiles')
         except:
             pass
     return
@@ -182,7 +197,7 @@ def getSampleProfiles(year):
 
 def getProfileStart(year):
     """
-    This function provides a sample of the top 1000 rows that will be returned with the getProfiles() function
+    This function provides the start month for profiles in a given year.
     
     """
     ## Get metadata
@@ -197,45 +212,6 @@ def getProfileStart(year):
     year = profiles.loc[0, 'Datefield'].year
     month = profiles.loc[0, 'Datefield'].month
     return year, month
-
-def profilePeriod(dataframe, startdate = None, enddate = None):
-    """
-    This function selects a subset of a profile dataframe based on a date range. Use getProfiles or upload profiles data. 
-    Dates must be formated as 'YYYY-MM-DD'. Days start at 00:00 and end at 23:55
-    
-    """
-    #print profile date info
-    dataStart = dataframe['Datefield'].min()
-    dataEnd = dataframe['Datefield'].max()
-    print('Profile starts on %s. \nProfile ends on %s.' % (dataStart, dataEnd))
-    
-    #prompt for user input if no start and end dates were provided
-    startdate = input('Enter period start date as YYYY-MM-DD\n') if startdate is None else startdate
-    enddate = input('Enter period end date as YYYY-MM-DD\n') if enddate is None else enddate
-    
-    #convert start and end date user input to datetime object
-    if isinstance(startdate, str):
-        startdate = datetime.strptime(startdate + ' 00:00', '%Y-%m-%d %H:%M')
-    if isinstance(enddate, str):
-        enddate = datetime.strptime(enddate + ' 23:55', '%Y-%m-%d %H:%M')
-    
-    #check that input dates fall within the profile period
-    if startdate > enddate :
-        return print('Period start must be before period end.')
-    if datetime.date(startdate) == datetime.date(dataStart): #set start date to data start to avoid time error
-        startdate = dataStart
-    if datetime.date(enddate) == datetime.date(dataEnd): #set end date to data end to avoid time error
-        enddate = dataEnd
-    if (startdate < dataStart) | (startdate > dataEnd):
-        return print('This profile starts on %s and ends on %s. Choose a start date that falls within this period.' % (dataStart, dataEnd))
-    if (enddate < dataStart) | (enddate > dataEnd):
-        return print('This profile starts on %s and ends on %s. Choose an end date that falls within this period.' % (dataStart, dataEnd))
-    
-    #subset dataframe by the specified date range
-    df = dataframe.loc[(dataframe['Datefield'] >= startdate) & (dataframe['Datefield'] <= enddate)].reset_index(drop=True)
-    #convert strings to category data type to reduce memory usage
-    #df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']] = df.loc[:,['AnswerID', 'ProfileID', 'Description', 'RecorderID', 'Valid']].apply(pd.Categorical)
-    return df
 
 def getGroups(year = None):
     """
@@ -294,19 +270,6 @@ def saveTables(names, dataframes):
         path = os.path.join(dlrdb_dir, 'data', 'tables', k + '.feather')
         feather.write_dataframe(data, path)
     return
-
-def saveProfiles(mypath, yearstart, yearend):
-    """
-    This function fetches all profile data and saves it to path as a .feather file. 
-    ATTENTION: It will take several hours to run!
-    
-    """
-    for i in range(yearstart, yearend + 1):
-        print(i)
-        df = getProfiles(i)
-        path = mypath + 'p' + str(i) + '.feather'
-        print(path)
-        feather.write_dataframe(df, path)
         
 def anonAns():
     """
