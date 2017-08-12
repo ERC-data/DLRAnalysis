@@ -1,0 +1,6 @@
+[submodule "src"]
+	path = src
+	url = git@github.com:ERC-data/DLRAnalysis.git
+[submodule "data"]
+	path = data
+	url = git@github.com:SaintlyVi/DLR_data.git
