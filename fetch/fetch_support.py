@@ -35,9 +35,9 @@ import feather
 import os
 from pathlib import Path
 
-fetch_dir = Path(__file__).parents[0]
-src_dir = Path(__file__).parents[1]
-dlrdb_dir = Path(__file__).parents[2]
+fetch_dir = str(Path(__file__).parents[0])
+src_dir = str(Path(__file__).parents[1])
+dlrdb_dir = str(Path(__file__).parents[2])
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """

@@ -16,8 +16,8 @@ from glob import glob
 import os
 from pathlib import Path
 
-src_dir = Path(__file__).parents[0]
-dlrdb_dir = Path(__file__).parents[1]
+src_dir = str(Path(__file__).parents[0])
+dlrdb_dir = str(Path(__file__).parents[1])
 data_dir = os.path.join(dlrdb_dir, 'data', 'tables')
 
 def getFeathers(filepath = data_dir):
