@@ -22,8 +22,8 @@ def featureFrame(features, year):
         d = ans[0]
         q = ans[1]
         q['feature'] = f
-        newdata = d[d.AnswerID.isin(data)]
-        data = pd.merge(data, newdata, on = 'AnswerID')
+        newdata = d[d.AnswerID.isin(data.AnswerID)]
+        data = pd.merge(data, newdata, how='outer', on = 'AnswerID')
         featureqs = pd.concat([featureqs, q])
     featureqs.reset_index(drop=True, inplace=True)
         
