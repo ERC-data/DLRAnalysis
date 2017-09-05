@@ -77,15 +77,6 @@ def getProfileID(year = None):
         profileid = pd.Series(allprofiles.loc[allprofiles.GroupID.isin(getGroups(year).GroupID), 'ProfileID'].unique())
     return profileid
 
-def getAnswerID():
-    """
-    Fetches all answer IDs for a given year. None returns all answer IDs.
-    
-    """
-    links = getData('LinkTable')
-    allanswers = links[(links.GroupID != 0) & (links.AnswerID != 0)]
-    return allanswers
-
 def getMetaProfiles(year, units = None):
     """
     Fetches profile meta data. Units must be one of  V or A. From 2009 onwards kVA, Hz and kW have also been measured.
@@ -273,13 +264,14 @@ def saveTables(names, dataframes):
         
 def anonAns():
     """
-    This function fetches survey responses and anonymises them, then returns and saves the anonymsed dataset as feather object
+    This function fetches survey responses and anonymises them, then returns and saves the anonymsed dataset as feather object.
+    The information on which questions to anonymise is contained in two csv files, blobQs.csv and charQs.csv.
     
     """
     anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv'}    
     for k,v in anstables.items():
         a = getData(k) #get all answers
-        qs = pd.read_csv(os.path.join(dlrdb_dir,'data','anonymise', v))
+        qs = pd.read_csv(os.path.join('anonymise', v))
         qs = qs.loc[lambda qs: qs.anonymise == 1, :]
         qanon = pd.merge(getData('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
         

@@ -6,33 +6,28 @@ Created on Sun Jul 23 13:59:37 2017
 """
 
 import pandas as pd
-from answers import answerSearch
-from fetch.fetch_support import getAnswerID
+from answers import answerSearch, getID
 import feather
 
 
 features = ['earn', 'water', 'roof', 'wall', 'electricity']
 
-#def featureFrame(features, year):
-#    "This function creates a dataframe containing the data for a set of selected features for a given year."
-#    data = pd.DataFrame(data = getAnswerID(), columns=['AnswerID']) #get AnswerIDs for year
-#    featureqs = pd.DataFrame() #construct dataframe with feature questions
-#    
-#    ans = answerSearch(features)
-#    d = ans[0]
-#    q = ans[1]    
-#    
-#    for f in features:
-#        ans = answerSearch(f)
-#        d = ans[0]
-#        q = ans[1]
-#        q['feature'] = f
-#       newdata = d[d.AnswerID.isin(getAnswerID())]
-#        data = pd.merge(data, newdata, on = 'AnswerID')
-#       featureqs = pd.concat([featureqs, q])
-#    featureqs.reset_index(drop=True, inplace=True)
+def featureFrame(features, year):
+    "This function creates a dataframe containing the data for a set of selected features for a given year."
+    data = pd.DataFrame(data = getID(year), columns=['AnswerID']) #get AnswerIDs for year
+    featureqs = pd.DataFrame() #construct dataframe with feature questions
+    
+    for f in features:
+        ans = answerSearch(f)
+        d = ans[0]
+        q = ans[1]
+        q['feature'] = f
+        newdata = d[d.AnswerID.isin(data)]
+        data = pd.merge(data, newdata, on = 'AnswerID')
+        featureqs = pd.concat([featureqs, q])
+    featureqs.reset_index(drop=True, inplace=True)
         
-#    return [data, featureqs]
+    return [data, featureqs]
 
 
 #mydata = featureFrame(features, 2011)[0]

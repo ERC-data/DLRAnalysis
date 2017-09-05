@@ -35,7 +35,7 @@ def getFeathers(filepath = data_dir):
             pass
     return tables
 
-def idYear(year = 2014, id_name = 'AnswerID'):
+def getID(year = 2014, id_name = 'AnswerID'):
     """
     Subsets Answer or Profile IDs by year. Year input can be number or string. id_name is AnswerID or ProfileID.
     """
