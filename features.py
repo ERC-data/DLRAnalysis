@@ -32,7 +32,7 @@ def featureFrame(features, year):
         
     return [data, featureqs]
 
-def idAnswer(answerid, features):
+def checkAnswer(answerid, features):
     links = loadFeathers().get('links')
     groupid = links.loc[links['AnswerID']==answerid].reset_index(drop=True).get_value(0, 'GroupID')
     groups = loadFeathers().get('groups')

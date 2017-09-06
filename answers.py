@@ -53,7 +53,6 @@ def loadID(year = None, id_name = 'AnswerID'):
         ids = pd.Series(all_ids.loc[all_ids.GroupID.isin(id_select), id_name].unique())
     return ids
 
-#preparing question tables
 def loadQuestions(dtype = None):
     """
     This function gets all questions.
@@ -68,7 +67,24 @@ def loadQuestions(dtype = None):
         qu = qu[qu.Datatype == dtype]
     return qu
 
-def quSearch(searchterm = '', qnairid = None, dtype = None):
+def loadAnswers(dtype = None):
+    """
+    This function returns all answer IDs and their question responses for a selected data type. 
+    If dtype is None, answer IDs and their corresponding questionaire IDs are returned instead.
+    
+    """
+    if dtype is None:
+        ans = loadFeathers().get('answers').drop(labels='lock', axis=1)
+    elif dtype == 'blob':
+        ans = loadFeathers().get('answers_blob_anon')
+        ans.fillna(np.nan, inplace = True)
+    elif dtype == 'char':
+        ans = loadFeathers().get('answers_char_anon').drop(labels='lock', axis=1)
+    elif dtype == 'num':
+        ans = loadFeathers().get('answers_num').drop(labels='lock', axis=1)
+    return ans
+
+def questionSearch(searchterm = '', qnairid = None, dtype = None):
     """
     Searches questions for a search term, taking questionaire ID and question data type (num, blob, char) as input. 
     A single search term can be specified as a string, or a list of search terms as list.
@@ -92,33 +108,6 @@ def quSearch(searchterm = '', qnairid = None, dtype = None):
     result = qdf.loc[qdf.Question.str.lower().str.contains('|'.join(searchterm)), ['Question', 'Datatype','QuestionaireID', 'ColumnNo', 'Lower', 'Upper']]
     return result
 
-def qnairQ(qnid = 3):
-    """
-    Creates a dict with items containing questions by type (num, blob, char).
-    
-    """
-    d = {i : quSearch(qnairid = qnid, dtype=i) for i in ['num','blob','char']}
-    return d
-
-#preparing answer tables    
-def loadAnswers(dtype = None):
-    """
-    This function returns all answer IDs and their question responses for a selected data type. 
-    If dtype is None, answer IDs and their corresponding questionaire IDs are returned instead.
-    
-    """
-    if dtype is None:
-        ans = loadFeathers().get('answers').drop(labels='lock', axis=1)
-    elif dtype == 'blob':
-        ans = loadFeathers().get('answers_blob_anon')
-        ans.fillna(np.nan, inplace = True)
-    elif dtype == 'char':
-        ans = loadFeathers().get('answers_char_anon').drop(labels='lock', axis=1)
-    elif dtype == 'num':
-        ans = loadFeathers().get('answers_num').drop(labels='lock', axis=1)
-    return ans
-
-
 def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     """
     This function returns
@@ -126,10 +115,18 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     """
     allans = loadAnswers() #get answer IDs for questionaire IDs
     ans = loadAnswers(dtype) #retrieve all responses for data type
-    questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
+    questions = questionSearch(searchterm, qnairid, dtype) #get column numbers for query
     result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])] #subset responses by answer IDs
     result = result.iloc[:, [0] +  list(questions['ColumnNo'])]
     return [result, questions[['ColumnNo','Question']]]
+
+def qnairQ(qnid = 3):
+    """
+    Creates a dict with items containing questions by type (num, blob, char).
+    
+    """
+    d = {i : questionSearch(qnairid = qnid, dtype=i) for i in ['num','blob','char']}
+    return d
 
 def loadLocations(year = '2014'):
     "This function returns all survey locations for a given year."
