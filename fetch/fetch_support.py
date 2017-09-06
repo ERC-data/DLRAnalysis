@@ -45,7 +45,7 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize
 
     """
     #connection object:
-    with open('cnxnstr.txt', 'r') as f: 
+    with open(os.path.join(fetch_dir, 'cnxnstr.txt'), 'r') as f: 
         cnxnstr = f.read().replace('\n', '')
     cnxn = pyodbc.connect(cnxnstr)
     
@@ -248,7 +248,7 @@ def getGroups(year = None):
         stryear = str(year)
         return allgroups[allgroups['Year']== stryear] 
 
-def saveTables(names, dataframes): 
+def tableToFeather(names, dataframes): 
     """
     This function saves a dictionary of name:dataframe items from a list of names and a list of dataframes as feather files.
     The getData() and getGroups() functions can be used to construct the dataframes.
@@ -278,5 +278,5 @@ def anonAns():
         for i, rows in qanon.iterrows():
             a.set_value(a[a.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
         
-        saveTables([k.lower() + '_anon'],[a]) #saves answers as feather object
+        tableToFeather([k.lower() + '_anon'],[a]) #saves answers as feather object
     return

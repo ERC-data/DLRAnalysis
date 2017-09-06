@@ -6,7 +6,7 @@ Created on Sun Jul 23 13:59:37 2017
 """
 
 import pandas as pd
-from answers import answerSearch, getID
+from answers import answerSearch, loadID, loadFeathers
 import feather
 
 
@@ -14,11 +14,14 @@ features = ['earn', 'water', 'roof', 'wall', 'electricity']
 
 def featureFrame(features, year):
     "This function creates a dataframe containing the data for a set of selected features for a given year."
-    data = pd.DataFrame(data = getID(year), columns=['AnswerID']) #get AnswerIDs for year
+    data = pd.DataFrame(data = loadID(year), columns=['AnswerID']) #get AnswerIDs for year
     featureqs = pd.DataFrame() #construct dataframe with feature questions
     
     for f in features:
-        ans = answerSearch(f)
+        if year <= 1999:
+            ans = answerSearch(f, qnairid = 6, dtype = 'num')
+        else:
+            ans = answerSearch(f, qnairid = 3, dtype = 'num')
         d = ans[0]
         q = ans[1]
         q['feature'] = f
@@ -29,6 +32,14 @@ def featureFrame(features, year):
         
     return [data, featureqs]
 
+def idAnswer(answerid, features):
+    links = loadFeathers().get('links')
+    groupid = links.loc[links['AnswerID']==answerid].reset_index(drop=True).get_value(0, 'GroupID')
+    groups = loadFeathers().get('groups')
+    year = int(groups.loc[groups.GroupID == groupid, 'Year'].reset_index(drop=True)[0])
+    
+    ans = featureFrame(features, year)[0].loc[featureFrame(features, year)[0]['AnswerID']==answerid]
+    return ans
 
 #mydata = featureFrame(features, 2011)[0]
 #mydata = mydata.drop(['AnswerID','95'], axis=1)

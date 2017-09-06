@@ -20,7 +20,7 @@ src_dir = str(Path(__file__).parents[0])
 dlrdb_dir = str(Path(__file__).parents[1])
 data_dir = os.path.join(dlrdb_dir, 'data', 'tables')
 
-def getFeathers(filepath = data_dir):
+def loadFeathers(filepath = data_dir):
     """
     This function loads all feather tables in filepath into workspace.
     
@@ -35,28 +35,31 @@ def getFeathers(filepath = data_dir):
             pass
     return tables
 
-def getID(year = 2014, id_name = 'AnswerID'):
+def loadID(year = None, id_name = 'AnswerID'):
     """
     Subsets Answer or Profile IDs by year. Year input can be number or string. id_name is AnswerID or ProfileID.
     """
-    if isinstance(year, str):
-        pass
-    else:
-        year = str(year)
-    groups = getFeathers().get('groups')
-    links = getFeathers().get('links')
+    groups = loadFeathers().get('groups')
+    links = loadFeathers().get('links')
     all_ids = links[(links.GroupID != 0) & (links[id_name] != 0)]
-    id_select = groups[groups.Year==year]['GroupID']
-    ids = pd.Series(all_ids.loc[all_ids.GroupID.isin(id_select), id_name].unique())
+    if year is None:
+        ids = pd.Series(all_ids.loc[:, id_name].unique())
+    else:      
+        if isinstance(year, str):
+            pass
+        else:
+            year = str(year)
+        id_select = groups[groups.Year==year]['GroupID']
+        ids = pd.Series(all_ids.loc[all_ids.GroupID.isin(id_select), id_name].unique())
     return ids
 
 #preparing question tables
-def getQuestions(dtype = None):
+def loadQuestions(dtype = None):
     """
     This function gets all questions.
     
     """
-    qu = getFeathers().get('questions').drop(labels='lock', axis=1)
+    qu = loadFeathers().get('questions').drop(labels='lock', axis=1)
     qu.Datatype = qu.Datatype.astype('category')
     qu.Datatype.cat.categories = ['blob','char','num']
     if dtype is None:
@@ -76,10 +79,10 @@ def quSearch(searchterm = '', qnairid = None, dtype = None):
     else:
         searchterm = [searchterm]
     searchterm = [s.lower() for s in searchterm]
-    qcons = getFeathers().get('qconstraints').drop(labels='lock', axis=1)
-    qu = getQuestions(dtype)
+    qcons = loadFeathers().get('qconstraints').drop(labels='lock', axis=1)
+    qu = loadQuestions(dtype)
     qdf = qu.join(qcons, 'QuestionID', rsuffix='_c') #join question constraints to questions table
-    qnairids = list(getFeathers().get('questionaires')['QuestionaireID']) #get list of valid questionaire IDs
+    qnairids = list(loadFeathers().get('questionaires')['QuestionaireID']) #get list of valid questionaire IDs
     if qnairid is None: #gets all relevant queries
         pass
     elif qnairid in qnairids: #check that ID is valid if provided
@@ -98,21 +101,21 @@ def qnairQ(qnid = 3):
     return d
 
 #preparing answer tables    
-def getAnswers(dtype = None):
+def loadAnswers(dtype = None):
     """
     This function returns all answer IDs and their question responses for a selected data type. 
     If dtype is None, answer IDs and their corresponding questionaire IDs are returned instead.
     
     """
     if dtype is None:
-        ans = getFeathers().get('answers').drop(labels='lock', axis=1)
+        ans = loadFeathers().get('answers').drop(labels='lock', axis=1)
     elif dtype == 'blob':
-        ans = getFeathers().get('answers_blob_anon')
+        ans = loadFeathers().get('answers_blob_anon')
         ans.fillna(np.nan, inplace = True)
     elif dtype == 'char':
-        ans = getFeathers().get('answers_char_anon').drop(labels='lock', axis=1)
+        ans = loadFeathers().get('answers_char_anon').drop(labels='lock', axis=1)
     elif dtype == 'num':
-        ans = getFeathers().get('answers_num').drop(labels='lock', axis=1)
+        ans = loadFeathers().get('answers_num').drop(labels='lock', axis=1)
     return ans
 
 
@@ -121,21 +124,21 @@ def answerSearch(searchterm = '', qnairid = 3, dtype = 'num'):
     This function returns
     
     """
-    allans = getAnswers() #get answer IDs for questionaire IDs
-    ans = getAnswers(dtype) #retrieve all responses for data type
+    allans = loadAnswers() #get answer IDs for questionaire IDs
+    ans = loadAnswers(dtype) #retrieve all responses for data type
     questions = quSearch(searchterm, qnairid, dtype) #get column numbers for query
     result = ans[ans.AnswerID.isin(allans[allans.QuestionaireID == qnairid]['AnswerID'])] #subset responses by answer IDs
     result = result.iloc[:, [0] +  list(questions['ColumnNo'])]
     return [result, questions[['ColumnNo','Question']]]
 
-def getLocations(year = '2014'):
+def loadLocations(year = '2014'):
     "This function returns all survey locations for a given year."
-    groups = getFeathers().get('groups')
+    groups = loadFeathers().get('groups')
     locs = set(l.partition(' ')[2] for l in groups[groups.Year==year]['Location'])
     locations = sorted(list(locs))
     return locations 
 
-def getLang(code = None):
+def loadLang(code = None):
     """
     This function returns the language categories
     
@@ -147,7 +150,7 @@ def getLang(code = None):
         language = language[code]
     return language
 
-def getAltE(code = None):
+def loadAltE(code = None):
     """
     This function returns the alternative fuel categories.
     
