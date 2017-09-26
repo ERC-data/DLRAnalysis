@@ -17,30 +17,28 @@ data_dir = os.path.join(dlrdb_dir, 'raw_profiles')
 
 def loadProfiles(filepath = data_dir):
     """
-    This function loads all feather tables in filepath into workspace.
+    This function uses a rolling window to reduce all raw load profiles to hourly mean values. Monthly load profiles are then concatenated into annual profiles and saved as a dictionary object.
+    The data is structured as follows:
+        dict[year:{unit:[profile]}]
     
     """
     p = Path(data_dir)
-    for child in p.iterdir():
-        for grandchild in child.iterdir():
-            glob(os.path.join(grandchild, '*_A.feather'))
-    
-    files = glob(os.path.join(data_dir, '*.feather'))
-    names = [f.rpartition('.')[0] for f in os.listdir(data_dir)]
-    tables = {}
-    for n, f in zip(names, files):
-        try:
-            tables[n] = feather.read_dataframe(f)
-        except:
-            pass
-    return tables
+    profiles = {}
+    for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
+        profiles[unit] = {}
+        for child in p.iterdir():
+            ts = []
+            for grandchild in child.iterdir():
+                try:
+                    childpath = glob(os.path.join(grandchild, '*_' + unit + '.feather'))[0]
+                except:
+                    pass
+                data = feather.read_dataframe(childpath)
+                hourlydata = data.groupby('ProfileID').apply(lambda x: x.resample('H', on='Datefield').sum())
+                ts.append(hourlydata)
+                print(child, unit)
+            profiles[unit][child] = ts
+    return profiles
 
 
-for child in p.iterdir():
-    for grandchild in child.iterdir():
-        for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
-            try:
-                newfiles = glob(os.path.join(grandchild, '*_', unit ,'.feather'))
-            except:
-                pass
-            print(newfiles)
+
