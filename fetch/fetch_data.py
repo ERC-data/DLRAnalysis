@@ -12,6 +12,7 @@ NOTE: These functions require access to a DLR SQL database instance.
 import fetch_support as f
 
 def saveTables():
+    "This function fetches tables from the SQL database and saves them as a feather object. Answer tables are anonymsed to remove all discriminating personal information of respondents."
     groups = f.getGroups() 
     questions = f.getData('Questions')
     questionaires = f.getData('Questionaires')
@@ -32,6 +33,7 @@ def saveTables():
     f.anonAns() #anonymise and save answer tables
     
 def saveProfiles(yearstart, yearend):
+    "This function iterates through all profiles and saves them in a ordered directory structure by year and unit."
     if yearstart < 2009:
         for year in range(yearstart, yearend + 1):
             for unit in ['A','V']:

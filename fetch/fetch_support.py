@@ -153,13 +153,13 @@ def getProfiles(year, units = 'A'):
             profile_month = df.Datefield[0].month
             
             if head_year == tail_year: #check if dataframe contains profiles for two years
-                writeProfile(df, year, head_year, profile_month, units, 'profiles')
+                writeProfile(df, year, head_year, profile_month, units, 'raw_profiles')
             else:
                 #split dataframe into two years and save separately
                 head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
-                writeProfile(head_df, year, head_year, profile_month, units, 'profiles')               
+                writeProfile(head_df, year, head_year, profile_month, units, 'raw_profiles')               
                 tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
-                writeProfile(tail_df, year, tail_year, profile_month, units, 'profiles')
+                writeProfile(tail_df, year, tail_year, profile_month, units, 'raw_profiles')
         except:
             pass
     return
