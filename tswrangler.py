@@ -15,11 +15,11 @@ src_dir = str(Path(__file__).parents[0])
 dlrdb_dir = str(Path(__file__).parents[1])
 data_dir = os.path.join(dlrdb_dir, 'raw_profiles')
 
-def loadProfiles(filepath = data_dir):
+def reduceRawProfiles(filepath = data_dir):
     """
-    This function uses a rolling window to reduce all raw load profiles to hourly mean values. Monthly load profiles are then concatenated into annual profiles and saved as a dictionary object.
+    This function uses a rolling window to reduce all raw load profiles to hourly mean values. Monthly load profiles are then concatenated into annual profiles and returned as a dictionary object.
     The data is structured as follows:
-        dict[year:{unit:[profile]}]
+        dict[unit:{year:[list_of_profile_ts]}]
     
     """
     p = Path(data_dir)
@@ -36,9 +36,29 @@ def loadProfiles(filepath = data_dir):
                 data = feather.read_dataframe(childpath)
                 hourlydata = data.groupby('ProfileID').apply(lambda x: x.resample('H', on='Datefield').sum())
                 ts.append(hourlydata)
-                print(child, unit)
+                print(grandchild, unit)
             profiles[unit][child] = ts
     return profiles
 
+def saveHourlyProfiles(filepath = data_dir):
+    """
+    Creates folder structure and writes profile to feather file.
+    
+    """
+    profiledict = reduceRawProfiles(filepath)
+    
+    for u, v in profiledict.items():
+        unit = u
+        dir_path = os.path.join(dlrdb_dir, 'data', 'hourly_profiles', unit)
+        os.makedirs(dir_path, exist_ok=True)
+        for y, z in v.items():
+            year = y
+            ts = pd.DataFrame(z)
+            path = os.path.join(dir_path, year + '.csv')
+            print(path)
+            ts.to_csv(path)
+            print('Write success')                
+    return
+        
 
 

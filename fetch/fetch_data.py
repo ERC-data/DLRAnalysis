@@ -32,7 +32,7 @@ def saveTables():
     f.tableToFeather(tablenames, tabledata)
     f.anonAns() #anonymise and save answer tables
     
-def saveProfiles(yearstart, yearend):
+def saveRawProfiles(yearstart, yearend):
     "This function iterates through all profiles and saves them in a ordered directory structure by year and unit."
     if yearstart < 2009:
         for year in range(yearstart, yearend + 1):
