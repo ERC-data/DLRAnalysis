@@ -1,5 +1,4 @@
-# SA Domestic Load Research 
-## Data Access & Analysis
+# SA Domestic Load Research Data Access & Analysis
 
 ### Setup DLR_DB src environment
 1. Make a parent directory and call it DLR_DB.
