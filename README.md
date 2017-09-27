@@ -22,6 +22,6 @@ If you have access to an MSSQL installation of the DLR database, you can access 
 3. Use `saveProfiles()` in fetch_data.py to save load profiles as feather files *
 4. Use `reduceRawProfiles()` and `saveHourlyProfiles()` in tswrangler.py to reduce and save 5min data to hourly timeseries
 
-\* feather is a fast and efficient file format for storing and retrieving data frames. It is compatible with both R and python. Feather files should be stored for working purposes only and are not a suitable file format for archiving.
+\* feather is a fast and efficient file format for storing and retrieving data frames. It is compatible with both R and python. Feather files should be stored for working purposes only as the file format is not suitable for archiving.
 
-Once the data has been extracted from the database and saved in the appropriate directories, you can follow the instructions above to explore 
+Once the data has been extracted from the database and saved in the appropriate directories, you can follow the instructions above to explore the data.
