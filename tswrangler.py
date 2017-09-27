@@ -53,9 +53,6 @@ def reduceRawProfiles(filepath = os.path.join(data_dir, 'raw')):
                 feather.write_dataframe(ts, wpath)
                 print('Write success')
     return
-
-def csvHourlyProfiles():
-    return
         
 
 
