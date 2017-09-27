@@ -110,7 +110,7 @@ def writeProfile(df, group_year, profile_year, profile_month, units, dlrdb_sub_d
     """
     Creates folder structure and writes profile to feather file.
     """
-    dir_path = os.path.join(dlrdb_dir, dlrdb_sub_dir, str(group_year), str(profile_year) + '-' + str(profile_month))
+    dir_path = os.path.join(dlrdb_dir, 'profiles', dlrdb_sub_dir, str(group_year), str(profile_year) + '-' + str(profile_month))
     os.makedirs(dir_path , exist_ok=True)
     path = os.path.join(dir_path, str(profile_year) + '-' + str(profile_month) + '_' + str(units) + '.feather')
     print(path)
@@ -153,13 +153,13 @@ def getProfiles(year, units = 'A'):
             profile_month = df.Datefield[0].month
             
             if head_year == tail_year: #check if dataframe contains profiles for two years
-                writeProfile(df, year, head_year, profile_month, units, 'raw_profiles')
+                writeProfile(df, year, head_year, profile_month, units, 'raw')
             else:
                 #split dataframe into two years and save separately
                 head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
-                writeProfile(head_df, year, head_year, profile_month, units, 'raw_profiles')               
+                writeProfile(head_df, year, head_year, profile_month, units, 'raw')               
                 tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
-                writeProfile(tail_df, year, tail_year, profile_month, units, 'raw_profiles')
+                writeProfile(tail_df, year, tail_year, profile_month, units, 'raw')
         except:
             pass
     return
