@@ -11,8 +11,8 @@ from glob import glob
 import os
 from pathlib import Path
 
-src_dir = str(Path(__file__).parents[0])
-dlrdb_dir = str(Path(__file__).parents[1])
+src_dir = str(Path(__file__).parents[1])
+dlrdb_dir = str(Path(__file__).parents[2])
 data_dir = os.path.join(dlrdb_dir, 'profiles')
 
 def reduceRawProfiles(filepath = os.path.join(data_dir, 'raw')):
