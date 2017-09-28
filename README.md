@@ -5,9 +5,9 @@
 2. Clone the src repository from git: `git clone https://github.com/ERC-data/DLRAnalysis.git src`
 
 ### Setup DLR_DB data environment
-To run the scripts without a MSSQL database installation of the DLR project, access to a protected data repository is required. You can request access to this repo from [\@saintlyvi](https://github.com/SaintlyVi)
+To run the scripts without a MSSQL database installation of the DLR project, access to a protected data directory is required. You can request access to this repo from [\@saintlyvi](https://github.com/SaintlyVi)
 
-3. Clone the data repository from git into DLR_DB : `git clone https://github.com/SaintlyVi/DLR_data.git data`
+3. Download the data repository from google drive into DLR_DB/data
 
 ### Explore socio-demographic and timeseries data
 
