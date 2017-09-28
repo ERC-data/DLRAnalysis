@@ -31,6 +31,11 @@ process
 import feather
 import os
 from pathlib import Path
+import plotly as py
+from plotly.offline import plot
+import plotly.graph_objs as go
+import pandas as pd
+import numpy as np
 
 src_dir = str(Path(__file__).parents[1])
 dlrdb_dir = str(Path(__file__).parents[2])
@@ -46,6 +51,22 @@ def shapeProfiles(year, unit):
     data = feather.read_dataframe(os.path.join(data_dir, unit, year + '_' + unit + '.feather')) #load data
     valid_data = data[data.Valid >= 6] #remove invalid data - valid for 10min readings = 6, valid for 5min readings = 12
     sorted_data = valid_data.sort_values(by='Datefield') #sort by date
-    print(data.head(), data.tail())
+    sorted_data.ProfileID = sorted_data.ProfileID.apply(lambda x: str(x))
+    print(data.head())
     pretty_data = sorted_data.set_index(['Datefield','ProfileID']).unstack()['Unitsread'] #reshape dataframe
     return pretty_data
+
+def nanAnalysis(shapedProfile):
+    #prep data
+    fullrows = shapedProfile.count(axis=1)/shapedProfile.shape[1]
+    fullcols = shapedProfile.count(axis=0)/shapedProfile.shape[0]
+    
+    rowplot = go.Bar(x=fullrows.index, y=fullrows.values)
+    colplot = go.Bar(x=fullcols.index, y=fullcols.values)
+    
+    fig = py.tools.make_subplots(rows=2, cols=1)
+    
+    fig.append_trace(rowplot, 1, 1)
+    fig.append_trace(colplot, 2, 1)
+    
+    plot(fig)
