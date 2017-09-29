@@ -23,11 +23,12 @@ def saveTables():
     answers = f.getData('Answers')
     answers_num = f.getData('Answers_Number')
     links = f.getData('LinkTable')
-    profileid = f.getProfileID()
+    profiles = f.getData('Profiles')
     profilesummary = f.getData('ProfileSummaryTable')
+    recorderinstall = f.getData('RECORDER_INSTALL_TABLE')
     
-    tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answerid', 'answers', 'answers_num', 'links', 'profileid' ,'profilesummary']
-    tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answerid, answers, answers_num, links, profileid, profilesummary]
+    tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answerid', 'answers', 'answers_num', 'links', 'profiles' ,'profilesummary','recorderinstall']
+    tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answerid, answers, answers_num, links, profiles, profilesummary, recorderinstall]
     
     f.tableToFeather(tablenames, tabledata)
     f.anonAns() #anonymise and save answer tables

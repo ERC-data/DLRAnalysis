@@ -256,7 +256,10 @@ def tableToFeather(names, dataframes):
     """
     datadict = dict(zip(names, dataframes))
     for k in datadict.keys():
-        data = datadict[k].fillna(np.nan) #feather doesn't write None type
+        if datadict[k].size == datadict[k].count().sum():
+            data = datadict[k]
+        else:  
+            data = datadict[k].fillna(np.nan) #feather doesn't write None type
         os.makedirs(os.path.join(dlrdb_dir, 'data', 'tables') , exist_ok=True)
         path = os.path.join(dlrdb_dir, 'data', 'tables', k + '.feather')
         feather.write_dataframe(data, path)

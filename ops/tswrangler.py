@@ -39,9 +39,9 @@ def reduceRawProfiles(filepath = os.path.join(data_dir, 'raw')):
                     data.Datefield = np.round(data.Datefield.astype(np.int64), -9).astype('datetime64[ns]')
                     data['Valid'] = data['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False})
                     if unit in ['kVA','kW']:
-                        hourlydata = data.groupby(['RecorderID', 'ProfileID']).apply(lambda x: x.resample('H', on='Datefield').sum())
+                        hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample('H', on='Datefield').sum()
                     elif unit in ['A','V','Hz']:
-                        hourlydata = data.groupby(['RecorderID', 'ProfileID']).apply(lambda x: x.resample('H', on='Datefield').mean())
+                        hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample('H', on='Datefield').mean()
                     else:
                         print("Unit must be one of 'A', 'V', 'kVA', 'Hz', 'kW'")
                     hourlydata.reset_index(inplace=True)

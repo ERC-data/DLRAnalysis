@@ -163,17 +163,24 @@ def checkAnswer(answerid, features):
     ans = featureFrame(features, year)[0].loc[featureFrame(features, year)[0]['AnswerID']==answerid]
     return ans
 
-def Locations(year = '2014'):
+def recorderLocations(year = 2014):
     """
-    This function returns all survey locations for a given year.
+    This function returns all survey locations and recorder abbreviations for a given year. Only valid from 2009 onwards.
     
     """
+    stryear = str(year)
     groups = loadTables().get('groups')
-    locs = set(l.partition(' ')[2] for l in groups[groups.Year==year]['Location'])
-    locations = sorted(list(locs))
+    groups['loc'] = groups['Location'].apply(lambda x:x.partition(' ')[2])
+    recorderids = loadTables().get('recorderinstall')
+    
+    reclocs = groups.merge(recorderids, left_on='GroupID', right_on='GROUP_ID')
+    reclocs['recorder_abrv'] = reclocs['RECORDER_ID'].apply(lambda x:x[:3])
+    yearlocs = reclocs.loc[reclocs['Year']== stryear,['loc','recorder_abrv']].drop_duplicates()
+    
+    locations = yearlocs.sort_values('loc')
     return locations 
 
-def Lang(code = None):
+def lang(code = None):
     """
     This function returns the language categories.
     
@@ -185,7 +192,7 @@ def Lang(code = None):
         language = language[code]
     return language
 
-def AltE(code = None):
+def altE(code = None):
     """
     This function returns the alternative fuel categories.
     
