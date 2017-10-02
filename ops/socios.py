@@ -16,17 +16,17 @@ from glob import glob
 import os
 from pathlib import Path
 
-src_dir = str(Path(__file__).parents[0])
-dlrdb_dir = str(Path(__file__).parents[1])
-data_dir = os.path.join(dlrdb_dir, 'data', 'tables')
+src_dir = str(Path(__file__).parents[1])
+dlrdb_dir = str(Path(__file__).parents[2])
+table_dir = os.path.join(dlrdb_dir, 'data', 'tables')
 
-def loadTables(filepath = data_dir):
+def loadTables(filepath = table_dir):
     """
     This function loads all feather tables in filepath into workspace.
     
     """
-    files = glob(os.path.join(data_dir, '*.feather'))
-    names = [f.rpartition('.')[0] for f in os.listdir(data_dir)]
+    files = glob(os.path.join(table_dir, '*.feather'))
+    names = [f.rpartition('.')[0] for f in os.listdir(table_dir)]
     tables = {}
     for n, f in zip(names, files):
         try:
