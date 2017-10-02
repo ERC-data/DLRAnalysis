@@ -124,24 +124,38 @@ def locationSummaryMean(locstring, data, interval):
     """
     Use in conjunction with socios.recorderLocations() to get locstrings for locations of interest. Mean should be used for A, V and Hz profiles.
     
-    
     """
     loc = data[data.RecorderID.str.contains(locstring.upper())]
     monthly = loc.groupby(['RecorderID','ProfileID']).resample(interval, on='Datefield').mean()
     return monthly.describe()
 
 def getProfilePower(year ):
-    if year < 2009:
-        return
-    elif 2009 <= year <= 2014:
-        iprof = s.loadProfiles(year, 'A')
-        vprof = s.loadProfiles(year, 'V')
-        links = s.loadTables().get('links')
-        links = links.loc[:, ['AnswerID','ProfileID']].dropna()
-        links = links[links.AnswerID != 0]
-        
-        ilink = iprof.merge(links, on='ProfileID')
-        vlink = vprof.merge(links, on='ProfileID')
     
+    a_id = s.loadID(year, id_name = 'AnswerID')
+    links = s.loadTables().get('links')
+    links = links[links.AnswerID.isin(a_id)]
+    links = links.loc[links.ProfileID != 0, ['AnswerID','ProfileID']]    
+      
+    profiles = s.loadTables().get('profiles')
+    
+    merged = links.merge(profiles, left_on='ProfileID', right_on='ProfileId').drop('ProfileId', axis=1)
+    merged = merged.loc[(merged['Unit of measurement'] == 1) | (merged['Unit of measurement'] == 2), :]
+    
+    vchan = profiles.loc[profiles['Unit of measurement']==2, ['RecorderID','ChannelNo']]
+    vchan['ChannelNo'] = vchan.ChannelNo - 1
+        
+    uom = {'V':1, 'A':2, 'kVA':3, 'kW':4, 'Hz':5}
+    
+    #get profile data for year
+    iprofile = loadProfiles(year, 'A')[0]    
+    vprofile = loadProfiles(year, 'V')[0]
+    
+    if year < 2009:
+        recins = s.loadTables().get('recorderinstall')
+    elif 2009 <= year <= 2014:
+
+        i = iprofile
+        v = vprofile[vprofile.ProfileID.isin(i.ProfileID - 1)]
+        p = i * v
     else:
         print('Year is out of range. Please select a year between 1994 and 2014')
