@@ -45,11 +45,8 @@ def loadID(year = None, id_name = 'AnswerID'):
     if year is None:
         ids = pd.Series(all_ids.loc[:, id_name].unique())
     else:      
-        if isinstance(year, str):
-            pass
-        else:
-            year = str(year)
-        id_select = groups[groups.Year==year]['GroupID']
+        stryear = str(year)
+        id_select = groups[groups.Year==stryear]['GroupID']
         ids = pd.Series(all_ids.loc[all_ids.GroupID.isin(id_select), id_name].unique())
     return ids
 

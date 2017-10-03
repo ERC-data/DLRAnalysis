@@ -38,9 +38,7 @@ def reduceRawProfiles(filepath = os.path.join(data_dir, 'raw')):
                     data = feather.read_dataframe(childpath)
                     data.Datefield = np.round(data.Datefield.astype(np.int64), -9).astype('datetime64[ns]')
                     data['Valid'] = data['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False})
-                    if unit in ['kVA','kW']:
-                        hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample('H', on='Datefield').sum()
-                    elif unit in ['A','V','Hz']:
+                    if unit in ['A','V','Hz','kVA','kW']:
                         hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample('H', on='Datefield').mean()
                     else:
                         print("Unit must be one of 'A', 'V', 'kVA', 'Hz', 'kW'")
@@ -49,7 +47,7 @@ def reduceRawProfiles(filepath = os.path.join(data_dir, 'raw')):
                     ts = ts.append(hourlydata)
                     print(grandchild, unit)
                 except:
-                    pass #skip if feather file does not exist 
+                    print('Could not add data for ' + str(grandchild)) #skip if feather file does not exist 
         #write to reduced data to file
             if ts.empty:
                 pass

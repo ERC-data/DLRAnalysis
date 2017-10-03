@@ -129,33 +129,46 @@ def locationSummaryMean(locstring, data, interval):
     monthly = loc.groupby(['RecorderID','ProfileID']).resample(interval, on='Datefield').mean()
     return monthly.describe()
 
-def getProfilePower(year ):
-    
+def getProfilePower(year):
+    #get list of AnswerIDs in variable year
     a_id = s.loadID(year, id_name = 'AnswerID')
+    
+    #get dataframe of linkages between AnswerIDs and ProfileIDs
     links = s.loadTables().get('links')
-    links = links[links.AnswerID.isin(a_id)]
-    links = links.loc[links.ProfileID != 0, ['AnswerID','ProfileID']]    
-      
+    year_links = links[links.AnswerID.isin(a_id)]
+    year_links = year_links.loc[year_links.ProfileID != 0, ['AnswerID','ProfileID']]    
+    
+    #get profile metadata (recorder ID, recording channel, recorder type, units of measurement)
     profiles = s.loadTables().get('profiles')
-    
-    merged = links.merge(profiles, left_on='ProfileID', right_on='ProfileId').drop('ProfileId', axis=1)
-    merged = merged.loc[(merged['Unit of measurement'] == 1) | (merged['Unit of measurement'] == 2), :]
-    
-    vchan = profiles.loc[profiles['Unit of measurement']==2, ['RecorderID','ChannelNo']]
-    vchan['ChannelNo'] = vchan.ChannelNo - 1
+    #add AnswerID information to profiles metadata
+    profile_meta = year_links.merge(profiles, left_on='ProfileID', right_on='ProfileId').drop('ProfileId', axis=1)        
+    VI_profile_meta = profile_meta.loc[(profile_meta['Unit of measurement'] == 2), :] #select current profiles only
         
-    uom = {'V':1, 'A':2, 'kVA':3, 'kW':4, 'Hz':5}
-    
     #get profile data for year
     iprofile = loadProfiles(year, 'A')[0]    
     vprofile = loadProfiles(year, 'V')[0]
     
-    if year < 2009:
-        recins = s.loadTables().get('recorderinstall')
-    elif 2009 <= year <= 2014:
+    if year < 2009: #pre-2009 recorder type is set up so that up to 12 current profiles share one voltage profile
+        #get list of ProfileIDs in variable year
+        p_id = s.loadID(year, id_name = 'ProfileID')
+        year_profiles = profiles[profiles.ProfileId.isin(p_id)]        
+        vchan = year_profiles.loc[year_profiles['Unit of measurement']==1, ['ProfileId','RecorderID']] #get metadata for voltage profiles
 
-        i = iprofile
-        v = vprofile[vprofile.ProfileID.isin(i.ProfileID - 1)]
-        p = i * v
+        iprofile = iprofile.merge(vchan, on='RecorderID', suffixes=('_i','_v'))
+        iprofile.rename(columns={"ProfileId": "matchcol"}, inplace=True)        
+        power = iprofile.merge(vprofile, left_on=['matchcol', 'Datefield'], right_on=['ProfileID','Datefield'], suffixes=['_i', '_v'])
+
+    elif 2009 <= year <= 2014: #recorder type is set up so that each current profile has its own voltage profile
+
+        vprofile['matchcol'] = vprofile['ProfileID'] + 1
+        power = vprofile.merge(iprofile, left_on=['matchcol', 'Datefield'], right_on=['ProfileID','Datefield'], suffixes=['_v', '_i'])
+                
     else:
-        print('Year is out of range. Please select a year between 1994 and 2014')
+        return print('Year is out of range. Please select a year between 1994 and 2014')
+    
+    power = power.loc[:,['RecorderID_v', 'ProfileID_v', 'Datefield', 'Unitsread_v', 'ProfileID_i', 'Unitsread_i']]
+    power.columns = ['RecorderID','V_ProfileID','Datefield','V_Unitsread','I_ProfileID','I_Unitsread']
+    power['kWh_caluclated'] = power.V_Unitsread*power.I_Unitsread*0.001
+    output = power.merge(VI_profile_meta.loc[:,['AnswerID','ProfileID']], left_on='I_ProfileID', right_on='ProfileID').drop('ProfileID', axis=1)
+    
+    return output
