@@ -124,28 +124,28 @@ def searchAnswers(searchterm = '', qnairid = 3, dtype = 'num'):
     result = result.iloc[:, [0] +  list(questions['ColumnNo'])]
     return [result, questions[['ColumnNo','Question']]]
 
-def featureFrame(features, year):
+def buildFeatureFrame(searchlist, year):
     """
     This function creates a dataframe containing the data for a set of selected features for a given year.
     
     """
     data = pd.DataFrame(data = loadID(year), columns=['AnswerID']) #get AnswerIDs for year
-    featureqs = pd.DataFrame() #construct dataframe with feature questions
+    questions = pd.DataFrame() #construct dataframe with feature questions
     
-    for f in features:
+    for s in searchlist:
         if year <= 1999:
-            ans = searchAnswers(f, qnairid = 6, dtype = 'num')
+            ans = searchAnswers(s, qnairid = 6, dtype = 'num')
         else:
-            ans = searchAnswers(f, qnairid = 3, dtype = 'num')
+            ans = searchAnswers(s, qnairid = 3, dtype = 'num')
         d = ans[0]
         q = ans[1]
-        q['feature'] = f
+        q['searchterm'] = s
         newdata = d[d.AnswerID.isin(data.AnswerID)]
         data = pd.merge(data, newdata, how='outer', on = 'AnswerID')
-        featureqs = pd.concat([featureqs, q])
-    featureqs.reset_index(drop=True, inplace=True)
+        questions = pd.concat([questions, q])
+    questions.reset_index(drop=True, inplace=True)
         
-    return [data, featureqs]
+    return [data, questions]
 
 def checkAnswer(answerid, features):
     """
@@ -157,7 +157,7 @@ def checkAnswer(answerid, features):
     groups = loadTables().get('groups')
     year = int(groups.loc[groups.GroupID == groupid, 'Year'].reset_index(drop=True)[0])
     
-    ans = featureFrame(features, year)[0].loc[featureFrame(features, year)[0]['AnswerID']==answerid]
+    ans = buildFeatureFrame(features, year)[0].loc[buildFeatureFrame(features, year)[0]['AnswerID']==answerid]
     return ans
 
 def recorderLocations(year = 2014):
