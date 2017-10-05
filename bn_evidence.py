@@ -40,14 +40,15 @@ def evidence2000(year):
     featureframe.monthly_income = pd.cut(featureframe.monthly_income, bins = income_bins, labels = income_labels, right=False, include_lowest=True)
     featureframe.floor_area = pd.cut(featureframe.floor_area, bins = floorarea_bins, labels = floorarea_labels)
     
-    featureframe.water_access = featureframe.water_access.map('{:.0f}'.format, na_action=None)
-    featureframe.roof_material = featureframe.roof_material.map('{:.0f}'.format, na_action=None)
-    featureframe.wall_material = featureframe.wall_material.map('{:.0f}'.format, na_action=None)
-    featureframe.cb_size = featureframe.cb_size.map('{:.0f}'.format, na_action=None)
-    featureframe.geyser_nr = featureframe.geyser_nr.map('{:.0f}'.format, na_action=None)
-    featureframe.AnswerID = featureframe.AnswerID.map('{:.0f}'.format, na_action=None)
+    featureframe.water_access = featureframe.water_access.map("{:.0f}".format, na_action=None)
+    featureframe.roof_material = featureframe.roof_material.map("{:.0f}".format, na_action=None)
+    featureframe.wall_material = featureframe.wall_material.map("{:.0f}".format, na_action=None)
+    featureframe.cb_size = featureframe.cb_size.map("{:.0f}".format, na_action=None)
+    featureframe.geyser_nr = featureframe.geyser_nr.map("{:.0f}".format, na_action=None)
+    featureframe.AnswerID = featureframe.AnswerID.map("{:.0f}".format, na_action=None)
     
     featureframe.replace(np.nan, '', regex=True, inplace=True) #easier to remove empty string later than nan, which can behave unpredictably
+    featureframe.replace('nan', '', inplace=True)
     featureframe.set_index('AnswerID', inplace=True) #set AnswerID column as index
     
     #Convert dataframe into a dict formatted for use as evidence in libpgm BN inference
