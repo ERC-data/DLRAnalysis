@@ -35,9 +35,8 @@ import feather
 import os
 from pathlib import Path
 
-fetch_dir = str(Path(__file__).parents[0])
-src_dir = str(Path(__file__).parents[1])
-dlrdb_dir = str(Path(__file__).parents[2])
+src_dir = str(Path(__file__).parents[0])
+dlrdb_dir = str(Path(__file__).parents[1])
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """
@@ -45,7 +44,7 @@ def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize
 
     """
     #connection object:
-    with open(os.path.join(fetch_dir, 'cnxnstr.txt'), 'r') as f: 
+    with open(os.path.join(src_dir, 'cnxnstr.txt'), 'r') as f: 
         cnxnstr = f.read().replace('\n', '')
     cnxn = pyodbc.connect(cnxnstr)
     
