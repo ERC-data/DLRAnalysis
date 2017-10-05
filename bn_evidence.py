@@ -21,7 +21,7 @@ bn_n = ["monthly_income", "water_access", "roof_material", "wall_material", "cb_
 
 def evidence2000(year):
     """
-    This function generates an evidence text file compatible with the python library libpgm for the specified year.
+    This function generates a json formatted evidence text file compatible with the syntax for providing evidence the python library libpgm for the specified year.
     """
     
     #Define socio-demographic search terms corresponding to BN nodes - valid for surveys from 2000 onwards
