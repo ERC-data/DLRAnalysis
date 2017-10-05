@@ -12,10 +12,6 @@ from socios import buildFeatureFrame
 import os
 from pathlib import Path
 
-src_dir = str(Path(__file__).parents[0])
-dlrdb_dir = str(Path(__file__).parents[1])
-output_dir = os.path.join(dlrdb_dir, 'output')
-
 #List of random variables in Bayesian network
 bn_n = ["monthly_income", "water_access", "roof_material", "wall_material", "cb_size", "floor_area", "geyser_nr"]
 
@@ -67,9 +63,9 @@ def evidence2000(year):
     
     #Generate evidence file
     filename = 'bn_evidence_' + str(year) + '.txt'
-    filepath = os.path.join(output_dir, filename)
+    filepath = os.path.join('out', filename)
     with open(filepath, 'w') as f:
         json.dump(evidence, f)
-    print(filename + ' successfully saved to ' + output_dir)
+    print('Successfully saved to out/' + filename)
     
     return #evidence
