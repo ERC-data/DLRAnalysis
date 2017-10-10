@@ -45,7 +45,7 @@ profile_dir = os.path.join(dlrdb_dir, 'profiles', 'hourly')
 
 def loadProfiles(year, unit):
     """
-    This function loads a year's unit profiles into a dataframe and returns it together with the year and unit concerned.
+    This function loads a year's hourly unit profiles into a dataframe and returns it together with the year and unit concerned.
     
     """
     data = feather.read_dataframe(os.path.join(profile_dir, unit, str(year) + '_' + unit + '.feather')) #load data
@@ -168,7 +168,37 @@ def getProfilePower(year):
     
     power = power.loc[:,['RecorderID_v', 'ProfileID_v', 'Datefield', 'Unitsread_v', 'ProfileID_i', 'Unitsread_i']]
     power.columns = ['RecorderID','V_ProfileID','Datefield','V_Unitsread','I_ProfileID','I_Unitsread']
-    power['kWh_caluclated'] = power.V_Unitsread*power.I_Unitsread*0.001
+    power['kWh_calculated'] = power.V_Unitsread*power.I_Unitsread*0.001
     output = power.merge(VI_profile_meta.loc[:,['AnswerID','ProfileID']], left_on='I_ProfileID', right_on='ProfileID').drop('ProfileID', axis=1)
     
     return output
+
+def aggClassProfile(year, class_dir = 'exp'):
+    """
+    This function gets the inferred class for each AnswerID and aggregates the profiles by month, day type and hour of the day.
+    """
+    
+    dirpath = os.path.join(dlrdb_dir, 'data', 'classes', class_dir)
+    filename = 'classes_' + str(year) + '.csv'
+    
+    #get data
+    classes = pd.read_csv(os.path.join(dirpath, filename), header=None, names=['AnswerID','class'])
+    profiles = getProfilePower(year)
+    
+    #add class label to profile IDs
+    df = classes.merge(profiles, on='AnswerID')
+    
+    #manipulate dataframe to match DPET hourly summary output
+    df['Month'] = df['Datefield'].dt.month
+    daytypebins = [0, 5, 6, 7]
+    daytypelabels = ['Weekday', 'Saturday', 'Sunday']
+    df['DayType'] = pd.cut(df.Datefield.dt.weekday, bins = daytypebins, labels = daytypelabels, right=False, include_lowest=True)
+    df['Hour'] = df['Datefield'].dt.hour
+    
+    grouped = df.groupby(['class','Month','DayType','Hour'])
+    classprofile = grouped['kWh_calculated'].agg([np.mean, np.std]).rename(columns={'mean': 'mean_kWh','std': 'std_kWh'})
+    
+    return classprofile
+
+def aggProfile(AnswerID):
+    return
