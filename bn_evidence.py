@@ -2,7 +2,7 @@
 """
 Created on Sun Jul 23 13:59:37 2017
 
-@author: CKAN
+@author: Wiebke Toussaint
 """
 
 import pandas as pd
@@ -12,9 +12,9 @@ from socios import buildFeatureFrame
 import os
 
 #List of random variables in Bayesian network
-bn_n = ["monthly_income", "water_access", "roof_material", "wall_material", "cb_size", "floor_area", "geyser_nr"]
+bn_nodes_exp1 = ["monthly_income", "water_access", "roof_material", "wall_material", "cb_size", "floor_area", "geyser_nr"]
 
-def evidence2000(year):
+def evidence2000(year, out_dir = 'exp'):
     """
     This function generates a json formatted evidence text file compatible with the syntax for providing evidence the python library libpgm for the specified year.
     """
@@ -32,7 +32,7 @@ def evidence2000(year):
         
         featureframe['geyser_nr'] = featureframe['115'] - featureframe['131'] #geyser_nr = GeyserNumber - GeyserBroken
         featureframe.drop(['115','131'], axis=1, inplace=True) #remove superfluous geyser columns
-        featureframe.columns = ['AnswerID'] + bn_n #rename columns to BN node names
+        featureframe.columns = ['AnswerID'] + bn_nodes_exp1 #rename columns to BN node names
         
         #Convert columns into datatypes that match BN node variables    
         income_bins = [0, 1800, 3200, 7800, 11600, 19116, 24500, 65600, 500000]
@@ -67,9 +67,11 @@ def evidence2000(year):
         
         #Generate evidence file
         filename = 'bn_evidence_' + str(year) + '.txt'
-        filepath = os.path.join('out', filename)
+        dirpath = os.path.join('out', out_dir)
+        os.makedirs(dirpath , exist_ok=True)
+        filepath = os.path.join(dirpath, filename)
         with open(filepath, 'w') as f:
             json.dump(evidence, f)
-        print('Successfully saved to out/' + filename)
+        print('Successfully saved to out/' + out_dir + '/' + filename)
         
         return #evidence
