@@ -195,10 +195,9 @@ def aggClassProfile(year, class_dir = 'exp'):
     df['DayType'] = pd.cut(df.Datefield.dt.weekday, bins = daytypebins, labels = daytypelabels, right=False, include_lowest=True)
     df['Hour'] = df['Datefield'].dt.hour
     
+    #group and normalise dataframe to get mean and std of power profiles by customer class, 
     grouped = df.groupby(['class','Month','DayType','Hour'])
+    groupnorm = grouped.transform(lambda x: (x - x.min()) / (x.max() - x.min()))
     classprofile = grouped['kWh_calculated'].agg([np.mean, np.std]).rename(columns={'mean': 'mean_kWh','std': 'std_kWh'})
     
     return classprofile
-
-def aggProfile(AnswerID):
-    return
