@@ -235,7 +235,9 @@ def annualPower(year, class_dir = 'exp'):
     return sum_daily_id, sum_monthly_id, mean_id, id_norm, class_norm
 
 #plotting
+import plotly.offline as po
 ap = annualPower(2012, class_dir = 'exp1')
 idprofile = ap[3]
 data = idprofile.loc[(idprofile['AnswerID'] == 1004031) & (idprofile['DayType'] == 'Weekday'), :]
 plotdata = data.pivot(columns='Month', index='Hour', values='mean_kWh_norm')
+plotdata.plot()
