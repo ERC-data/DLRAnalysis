@@ -236,8 +236,14 @@ def annualPower(year, class_dir = 'exp'):
 
 #plotting
 import plotly.offline as po
-ap = annualPower(2012, class_dir = 'exp1')
-idprofile = ap[3]
-data = idprofile.loc[(idprofile['AnswerID'] == 1004031) & (idprofile['DayType'] == 'Weekday'), :]
-plotdata = data.pivot(columns='Month', index='Hour', values='mean_kWh_norm')
-plotdata.plot()
+#ap = annualPower(2012, class_dir = 'exp1')
+#idprofile = ap[3]
+#data = idprofile.loc[(idprofile['AnswerID'] == 1004031) & (idprofile['DayType'] == 'Weekday'), :]
+#plotdata = data.pivot(columns='Month', index='Hour', values='mean_kWh_norm')
+#plotdata.plot()
+
+links = s.loadTables().get('links')
+p = s.loadTables().get('profiles')
+activeprofiles = p[(p.ProfileId.isin(links.ProfileID[(links.ProfileID.isin(p.ProfileId[(p['Unit of measurement'] == 2)])) & (links.GroupID == 1000105)])) & (p.Active == True)]
+len(links[(links.GroupID == 1000105) & (links.AnswerID != 0)])
+len(links[(links.GroupID == 1000105) & (links.ProfileID != 0)])

@@ -172,7 +172,7 @@ def recorderLocations(year = 2014):
     
     reclocs = groups.merge(recorderids, left_on='GroupID', right_on='GROUP_ID')
     reclocs['recorder_abrv'] = reclocs['RECORDER_ID'].apply(lambda x:x[:3])
-    yearlocs = reclocs.loc[reclocs['Year']== stryear,['loc','recorder_abrv']].drop_duplicates()
+    yearlocs = reclocs.loc[reclocs['Year']== stryear,['GroupID','loc','recorder_abrv']].drop_duplicates()
     
     locations = yearlocs.sort_values('loc')
     return locations 
