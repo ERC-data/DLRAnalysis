@@ -33,10 +33,7 @@ import numpy as np
 import pyodbc 
 import feather
 import os
-from pathlib import Path
-
-src_dir = str(Path(__file__).parents[0])
-dlrdb_dir = str(Path(__file__).parents[1])
+from dir_vars import dlrdb_dir, src_dir
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """

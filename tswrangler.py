@@ -11,11 +11,9 @@ from glob import glob
 import os
 from pathlib import Path
 
-src_dir = str(Path(__file__).parents[0])
-dlrdb_dir = str(Path(__file__).parents[1])
-data_dir = os.path.join(dlrdb_dir, 'profiles')
+from dir_vars import rawprofiles_dir, hourlyprofiles_dir
 
-def reduceRawProfiles(filepath = os.path.join(data_dir, 'raw')):
+def reduceRawProfiles(filepath = rawprofiles_dir):
     """
     This function uses a rolling window to reduce all raw load profiles to hourly mean values. Monthly load profiles are then concatenated into annual profiles and returned as a dictionary object.
     The data is structured as follows:
@@ -26,7 +24,7 @@ def reduceRawProfiles(filepath = os.path.join(data_dir, 'raw')):
     for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
         for child in p.iterdir():
         #create empty directory to save files
-            dir_path = os.path.join(data_dir, 'hourly', unit)
+            dir_path = os.path.join(hourlyprofiles_dir, unit)
             os.makedirs(dir_path, exist_ok=True)
             year = os.path.split(child)[-1]             
         #initialise empty dataframe to concatenate annual timeseries

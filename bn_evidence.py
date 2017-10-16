@@ -10,11 +10,12 @@ import numpy as np
 import json
 from socios import buildFeatureFrame
 import os
+from dir_vars import evidence_dir
 
 #List of random variables in Bayesian network
 bn_nodes_exp1 = ["monthly_income", "water_access", "roof_material", "wall_material", "cb_size", "floor_area", "geyser_nr"]
 
-def evidence2000(year, out_dir = 'exp'):
+def evidence2000(year, experiment_dir = 'exp'):
     """
     This function generates a json formatted evidence text file compatible with the syntax for providing evidence the python library libpgm for the specified year.
     """
@@ -67,11 +68,11 @@ def evidence2000(year, out_dir = 'exp'):
         
         #Generate evidence file
         filename = 'bn_evidence_' + str(year) + '.txt'
-        dirpath = os.path.join('out', out_dir)
+        dirpath = os.path.join(evidence_dir, experiment_dir)
         os.makedirs(dirpath , exist_ok=True)
         filepath = os.path.join(dirpath, filename)
         with open(filepath, 'w') as f:
             json.dump(evidence, f)
-        print('Successfully saved to out/' + out_dir + '/' + filename)
+        print('Successfully saved to ' + filepath)
         
         return #evidence

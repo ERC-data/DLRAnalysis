@@ -30,7 +30,6 @@ process
 
 import feather
 import os
-from pathlib import Path
 import plotly as py
 from plotly.offline import plot
 import plotly.graph_objs as go
@@ -39,16 +38,14 @@ import numpy as np
 
 import socios as s
 
-src_dir = str(Path(__file__).parents[0])
-dlrdb_dir = str(Path(__file__).parents[1])
-profile_dir = os.path.join(dlrdb_dir, 'profiles', 'hourly')
+from dir_vars import hourlyprofiles_dir, dlrdb_dir, classes_dir
 
 def loadProfiles(year, unit):
     """
     This function loads a year's hourly unit profiles into a dataframe and returns it together with the year and unit concerned.
     
     """
-    data = feather.read_dataframe(os.path.join(profile_dir, unit, str(year) + '_' + unit + '.feather')) #load data
+    data = feather.read_dataframe(os.path.join(hourlyprofiles_dir, unit, str(year) + '_' + unit + '.feather')) #load data
     return data, year, unit
 
 def shapeProfiles(annualunitprofile):
@@ -173,12 +170,12 @@ def getProfilePower(year):
     
     return output
 
-def classProfilePower(year, class_dir = 'exp'):
+def classProfilePower(year, experiment_dir = 'exp'):
     """
     This function gets the inferred class for each AnswerID and aggregates the profiles by month, day type and hour of the day.
     """
     
-    dirpath = os.path.join(dlrdb_dir, 'data', 'classes', class_dir)
+    dirpath = os.path.join(classes_dir, experiment_dir)
     filename = 'classes_' + str(year) + '.csv'
     
     #get data
@@ -192,9 +189,9 @@ def classProfilePower(year, class_dir = 'exp'):
     
     return classpower
 
-def annualPower(year, class_dir = 'exp'):
+def annualPower(year, experiment_dir = 'exp'):
     
-    df = classProfilePower(year, class_dir)
+    df = classProfilePower(year, experiment_dir)
     mean_hourly_id = df.groupby('AnswerID')['kWh_calculated'].mean().reset_index() #get mean annual hourly kWh value for each AnswerID
     
     #daily power profiles
