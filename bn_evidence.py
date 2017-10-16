@@ -17,7 +17,7 @@ bn_nodes_exp1 = ["monthly_income", "water_access", "roof_material", "wall_materi
 
 def evidence2000(year, experiment_dir = 'exp'):
     """
-    This function generates a json formatted evidence text file compatible with the syntax for providing evidence the python library libpgm for the specified year.
+    This function generates a json formatted evidence text file compatible with the syntax for providing evidence the python library libpgm for the specified year. The file is saved in 'DLR_DB/libpgm/evidence/experiment_dir'
     """
     
     if year < 2000:
