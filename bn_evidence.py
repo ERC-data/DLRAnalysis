@@ -15,9 +15,10 @@ from dir_vars import evidence_dir
 #List of random variables in Bayesian network
 bn_nodes_exp1 = ["monthly_income", "water_access", "roof_material", "wall_material", "cb_size", "floor_area", "geyser_nr"]
 
-def evidence2000(year, experiment_dir = 'exp'):
+def evidence_exp1(year, experiment_dir = 'exp1'):
     """
-    This function generates a json formatted evidence text file compatible with the syntax for providing evidence the python library libpgm for the specified year. The file is saved in 'DLR_DB/libpgm/evidence/experiment_dir'
+    This function generates a json formatted evidence text file compatible with the syntax for providing evidence the python library libpgm for the specified year. The file is saved in 'DLR_DB/libpgm/evidence/experiment_dir'.
+    The function can only be used for years from 2000 onwards, as the DLR socio demographic questionaire changed after 1999.
     """
     
     if year < 2000:
