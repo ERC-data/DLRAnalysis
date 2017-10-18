@@ -172,7 +172,7 @@ def getProfilePower(year):
 
 def classProfilePower(year, experiment_dir = 'exp'):
     """
-    This function gets the inferred class for each AnswerID from 'DLR_DB/libpgm/out/experiment_dir' and aggregates the profiles by month, day type and hour of the day.
+    This function gets the inferred class for each AnswerID from 'DLR_DB/class_model/out/experiment_dir' and aggregates the profiles by month, day type and hour of the day.
     """
     
     dirpath = os.path.join(classes_dir, experiment_dir)

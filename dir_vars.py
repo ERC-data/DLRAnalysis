@@ -13,7 +13,7 @@ dlrdb_dir = str(Path(__file__).parents[1])
 
 # level 1
 src_dir = str(Path(__file__).parents[0])
-libpgm_dir = os.path.join(dlrdb_dir, 'libpgm')
+class_dir = os.path.join(dlrdb_dir, 'class_model')
 data_dir = os.path.join(dlrdb_dir, 'data')
 
 # level 2 & 3 DATA
@@ -22,5 +22,5 @@ hourlyprofiles_dir = os.path.join(data_dir, 'profiles', 'hourly')
 table_dir = os.path.join(data_dir, 'tables')
 
 # level 2 & 3 INFERENCE
-evidence_dir = os.path.join(libpgm_dir, 'evidence')
-classes_dir = os.path.join(libpgm_dir, 'out')
+evidence_dir = os.path.join(class_dir, 'evidence')
+classes_dir = os.path.join(class_dir, 'out')
