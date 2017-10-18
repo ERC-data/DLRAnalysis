@@ -38,7 +38,7 @@ import numpy as np
 
 import socios as s
 
-from dir_vars import hourlyprofiles_dir, dlrdb_dir, classes_dir
+from dir_vars import hourlyprofiles_dir, dlrdb_dir, classout_dir
 
 def loadProfiles(year, unit):
     """
@@ -175,7 +175,7 @@ def classProfilePower(year, experiment_dir = 'exp'):
     This function gets the inferred class for each AnswerID from 'DLR_DB/class_model/out/experiment_dir' and aggregates the profiles by month, day type and hour of the day.
     """
     
-    dirpath = os.path.join(classes_dir, experiment_dir)
+    dirpath = os.path.join(classout_dir, experiment_dir)
     filename = 'classes_' + str(year) + '.csv'
     
     #get data
