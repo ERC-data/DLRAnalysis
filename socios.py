@@ -14,7 +14,7 @@ import pandas as pd
 import feather
 from glob import glob
 import os
-from dir_vars import table_dir
+from src.dir_vars import table_dir
 
 def loadTables(filepath = table_dir):
     """
