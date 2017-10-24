@@ -14,7 +14,7 @@ import pandas as pd
 import feather
 from glob import glob
 import os
-from src.dir_vars import table_dir
+from src.dir_vars import table_dir, e_dir
 
 def loadTables(filepath = table_dir):
     """
@@ -30,6 +30,23 @@ def loadTables(filepath = table_dir):
         except:
             pass
     return tables
+    
+def csvTables(savepath = None):
+    """
+    This function fetches tables saved as feather objects and saves them as csv files.
+    """
+    
+    tables = loadTables() #get data
+    if savepath is None:
+        savepath = os.path.join(e_dir, 'ERC Archive DB', 'DLR_DB', 'tables') #set default directory for saving files to ESAP remote PC
+    filenames = [os.path.join(savepath, x + '.csv') for x in list(tables.keys())] #generate list of filenames
+    
+    for name, path in zip(list(tables.keys()), filenames):
+        df = tables[name]
+        df.to_csv(path, index=False)
+        print('Successfully saved to' + path)
+        
+    return        
 
 def loadID(year = None, id_name = 'AnswerID'):
     """
