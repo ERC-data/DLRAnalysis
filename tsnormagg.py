@@ -31,14 +31,14 @@ process
 import feather
 import os
 import plotly as py
-from plotly.offline import plot
+from plotly.offline import offline
 import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
 
-import socios as s
+import src.socios as s
 
-from dir_vars import hourlyprofiles_dir, dlrdb_dir, classout_dir
+from src.dir_vars import hourlyprofiles_dir, classout_dir
 
 def loadProfiles(year, unit):
     """
@@ -64,11 +64,10 @@ def shapeProfiles(annualunitprofile):
     valid_data = data[data.Valid > 0] #remove invalid data - valid for 10min readings = 6, valid for 5min readings = 12
     sorted_data = valid_data.sort_values(by='Datefield') #sort by date
     sorted_data.ProfileID = sorted_data.ProfileID.apply(lambda x: str(x))
-    print(data.head())
     pretty_data = sorted_data.set_index(['Datefield','ProfileID']).unstack()['Unitsread'] #reshape dataframe
     return pretty_data, year, unit
 
-def nanAnalysis(shapedprofile, threshold = 0.95):
+def nanAnalysis(year, unit, threshold = 0.95):
     """
     This function displays information about the missing values for all customers in a load profile unit year.
     shapedprofile is a dataframe that has been created with shapeProfiles.
@@ -78,25 +77,34 @@ def nanAnalysis(shapedprofile, threshold = 0.95):
         * two graphs with summary statistics of all profiles
         * the percentage of profiles and measurement days with full observational data above the threshold value.
     """
-    data = shapedprofile[0]
-    year = shapedprofile[1]
-    unit = shapedprofile[2]
+    
+    data = shapeProfiles(loadProfiles(year, unit))[0]
+    year = shapeProfiles(loadProfiles(year, unit))[1]
+    unit = shapeProfiles(loadProfiles(year, unit))[2]
 
     #prep data
     fullrows = data.count(axis=1)/data.shape[1]
     fullcols = data.count(axis=0)/data.shape[0]
     
-    rowplot = go.Scatter(x=fullrows.index, y=fullrows.values)
-    colplot = go.Bar(x=fullcols.index, y=fullcols.values)
+    trace1 = go.Scatter(name='% valid profiles',
+                        x=fullrows.index, 
+                        y=fullrows.values)
+    trace2 = go.Bar(name='% valid hours',
+                    x=fullcols.index, 
+                    y=fullcols.values)
 #    thresh = go.Scatter(x=fullrows.index, y=threshold, mode = 'lines', name = 'threshold', line = dict(color = 'red'))
     
-    fig = py.tools.make_subplots(rows=2, cols=1)
+    fig = py.tools.make_subplots(rows=2, cols=1, subplot_titles=['Percentage of ProfileIDs with Valid Observations for each Hour','Percentage of Valid Observational Hours for each ProfileID'])
     
-    fig.append_trace(rowplot, 1, 1)
-    fig.append_trace(colplot, 2, 1)
+    fig.append_trace(trace1, 1, 1)
+    fig.append_trace(trace2, 2, 1)
 #    fig.append_trace(thresh, 2, 1)
+    fig['layout']['xaxis2'].update(title='ProfileIDs', type='category', exponentformat="none")
+    fig['layout']['yaxis'].update(domain=[0.55,1])
+    fig['layout']['yaxis2'].update(domain=[0, 0.375])
+    fig['layout'].update(title = "Visual analysis of valid DLR load profile data for " + str(year) + " readings (units: " + unit + ")", height=850)
     
-    plot(fig)
+    offline.iplot(fig)
     
     goodhours = len(fullcols[fullcols > threshold]) / len(fullcols) * 100
     goodprofiles = len(fullrows[fullrows > threshold]) / len(fullrows) * 100
@@ -107,24 +115,35 @@ def nanAnalysis(shapedprofile, threshold = 0.95):
     return 
     
 #investigating one location
-def locationSummarySum(locstring, data, interval):
+def tsAgg(year, unit, interval, locstring=None):
     """
-    Use in conjunction with socios.recorderLocations() to get locstrings for locations of interest. Sum should be used for kW and kVA profiles.
+    This function returns the aggregated mean or total load profile for all ProfileIDs for a year in a given location.
+    Use socios.recorderLocations() to get locstrings for locations of interest. 
+    Interval should be 'D' for calendar day frequency, 'M' for month end frequency or 'A' for annual frequency. Other interval options are described here: http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
     
+    The aggregate function for kW and kVA is sum().
+    The aggregate function for A, V and Hz is mean().
     """
-    loc = data[data.RecorderID.str.contains(locstring.upper())]
-    monthly = loc.groupby(['RecorderID','ProfileID']).resample(interval, on='Datefield').sum()
-    return monthly.describe()
-
-
-def locationSummaryMean(locstring, data, interval):
-    """
-    Use in conjunction with socios.recorderLocations() to get locstrings for locations of interest. Mean should be used for A, V and Hz profiles.
+    #load data
+    try:
+        data = loadProfiles(year, unit)[0]
+        data['ProfileID'] = data['ProfileID'].astype('category')
+    except:
+        return print("Invalid unit")
     
-    """
-    loc = data[data.RecorderID.str.contains(locstring.upper())]
-    monthly = loc.groupby(['RecorderID','ProfileID']).resample(interval, on='Datefield').mean()
-    return monthly.describe()
+    #subset dataframe by location
+    if locstring is None:
+        loc = data
+    else:
+        loc = data[data.RecorderID.str.contains(locstring.upper())]
+        
+    #specify aggregation function for different units    
+    if unit in ['kW','kVA']:
+        aggregated = loc.groupby(['RecorderID','ProfileID']).resample(interval, on='Datefield').sum()
+    elif unit in ['A', 'V', 'Hz']:
+        aggregated = loc.groupby(['RecorderID','ProfileID']).resample(interval, on='Datefield').mean()
+    
+    return aggregated
 
 def getProfilePower(year):
     #get list of AnswerIDs in variable year
@@ -232,7 +251,6 @@ def annualPower(year, experiment_dir = 'exp'):
     return sum_daily_id, sum_monthly_id, mean_id, id_norm, class_norm
 
 #plotting
-import plotly.offline as po
 #ap = annualPower(2012, class_dir = 'exp1')
 #idprofile = ap[3]
 #data = idprofile.loc[(idprofile['AnswerID'] == 1004031) & (idprofile['DayType'] == 'Weekday'), :]
