@@ -14,15 +14,16 @@ import pandas as pd
 import feather
 from glob import glob
 import os
-from src.dir_vars import table_dir, e_dir
+
+from src.setup import table_dir, e_dir
 
 def loadTables(filepath = table_dir):
     """
     This function loads all feather tables in filepath into workspace.
     
     """
-    files = glob(os.path.join(table_dir, '*.feather'))
-    names = [f.rpartition('.')[0] for f in os.listdir(table_dir)]
+    files = glob(os.path.join(filepath, '*.feather'))
+    names = [f.rpartition('.')[0] for f in os.listdir(filepath)]
     tables = {}
     for n, f in zip(names, files):
         try:

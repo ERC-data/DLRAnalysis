@@ -28,17 +28,17 @@ process
 
 """
 
+import pandas as pd
+import numpy as np
 import feather
 import os
+
 import plotly as py
 from plotly.offline import offline
 import plotly.graph_objs as go
-import pandas as pd
-import numpy as np
 
 import src.socios as s
-
-from src.dir_vars import hourlyprofiles_dir, classout_dir
+from src.setup import hourlyprofiles_dir, classout_dir   
 
 def loadProfiles(year, unit):
     """

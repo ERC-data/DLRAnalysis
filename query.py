@@ -6,7 +6,7 @@ Created on Tue Sep  5 16:35:39 2017
 """
 
 import pandas as pd
-from answers import *
+from socios import *
 
 wall_material_dist = answerSearch('wall', 3)[0].groupby(answerSearch('wall', 3)[0].iloc[:,-1]).size()
 

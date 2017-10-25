@@ -33,7 +33,8 @@ import numpy as np
 import pyodbc 
 import feather
 import os
-from dir_vars import dlrdb_dir, src_dir
+
+from setup import dlrdb_dir, src_dir
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """
@@ -104,7 +105,7 @@ def getMetaProfiles(year, units = None):
 
 def writeProfile(df, group_year, profile_year, profile_month, units, dlrdb_sub_dir):
     """
-    Creates folder structure and writes profile to feather file.
+    Creates folder structure and saves profiles as feather file.
     """
     dir_path = os.path.join(dlrdb_dir, 'profiles', dlrdb_sub_dir, str(group_year), str(profile_year) + '-' + str(profile_month))
     os.makedirs(dir_path , exist_ok=True)
@@ -244,7 +245,7 @@ def getGroups(year = None):
         stryear = str(year)
         return allgroups[allgroups['Year']== stryear] 
 
-def tableToFeather(names, dataframes): 
+def writeTables(names, dataframes): 
     """
     This function saves a dictionary of name:dataframe items from a list of names and a list of dataframes as feather files.
     The getData() and getGroups() functions can be used to construct the dataframes.

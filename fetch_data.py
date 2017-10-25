@@ -33,7 +33,7 @@ def saveTables():
     tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answerid', 'answers', 'answers_num', 'links', 'profiles' ,'profilesummary','recorderinstall']
     tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answerid, answers, answers_num, links, profiles, profilesummary, recorderinstall]
     
-    f.tableToFeather(tablenames, tabledata)
+    f.writeTables(tablenames, tabledata)
     f.anonAns() #anonymise and save answer tables
     
 def saveRawProfiles(yearstart, yearend):
