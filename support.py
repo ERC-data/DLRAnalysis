@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 
 # root dir
-e_dir = str(Path(__file__).parents[3])
 dlrdb_dir = str(Path(__file__).parents[1])
 
 # level 1

@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep 26 09:11:13 2017
+Created on Wed Jun 28 16:03:22 2017
 
-@author: CKAN
+@author: Wiebke Toussaint
+
+This file contains functions to fetch and save data from the DLR SQL database. saveTables() saves socio-demographic data. Sensitive personal information is removed with the anonAns() function. saveProfiles() saves the load profiles for each year in a specified range.
+
+NOTE: These functions require access to a DLR SQL database instance.
 """
 import numpy as np
 import pandas as pd
@@ -12,6 +16,48 @@ import os
 from pathlib import Path
 
 from support import rawprofiles_dir, hourlyprofiles_dir
+import obshelpers as o
+
+def saveTables():
+    """
+    This function fetches tables from the SQL database and saves them as a feather object. Answer tables are anonymsed to remove all discriminating personal information of respondents.
+    """
+    
+    groups = o.getGroups() 
+    questions = o.getData('Questions')
+    questionaires = o.getData('Questionaires')
+    qdtype = o.getData('QDataType')
+    qredundancy = o.getData('QRedundancy')
+    qconstraints = o.getData('QConstraints')
+    answerid = o.getAnswerID()
+    answers = o.getData('Answers')
+    answers_num = o.getData('Answers_Number')
+    links = o.getData('LinkTable')
+    profiles = o.getData('Profiles')
+    profilesummary = o.getData('ProfileSummaryTable')
+    recorderinstall = o.getData('RECORDER_INSTALL_TABLE')
+    
+    tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answerid', 'answers', 'answers_num', 'links', 'profiles' ,'profilesummary','recorderinstall']
+    tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answerid, answers, answers_num, links, profiles, profilesummary, recorderinstall]
+    
+    o.writeTables(tablenames, tabledata)
+    o.anonAns() #anonymise and save answer tables
+    
+def saveRawProfiles(yearstart, yearend):
+    """
+    This function iterates through all profiles and saves them in a ordered directory structure by year and unit.
+    """
+    
+    if yearstart < 2009:
+        for year in range(yearstart, yearend + 1):
+            for unit in ['A','V']:
+                o.getProfiles(year, unit)
+    elif yearstart >= 2009 and yearend <= 2014:       
+        for year in range(yearstart, yearend + 1):
+            for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
+                o.getProfiles(year, unit)
+    else:
+        print('Years are out of range. Please select a year start and end date between 1994 and 2014')
 
 def reduceRawProfiles(filepath = rawprofiles_dir):
     """
@@ -55,5 +101,3 @@ def reduceRawProfiles(filepath = rawprofiles_dir):
                 print('Write success')
     return
         
-
-
