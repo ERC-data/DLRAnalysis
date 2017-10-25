@@ -261,6 +261,19 @@ def writeTables(names, dataframes):
         path = os.path.join(dlrdb_dir, 'data', 'tables', k + '.feather')
         feather.write_dataframe(data, path)
     return
+
+def csvTables(savepath, names, dataframes):
+    """
+    This function fetches tables saved as feather objects and saves them as csv files.
+    """
+    datadict = dict(zip(names, dataframes))
+    for k, v in datadict.items():    
+         #generate list of filenames
+        filename = os.path.join(savepath, k + '.csv')
+        v.to_csv(filename, index=False)
+        print('Successfully saved to' + filename)        
+    return        
+
         
 def anonAns():
     """
