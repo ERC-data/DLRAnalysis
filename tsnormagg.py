@@ -38,7 +38,7 @@ from plotly.offline import offline
 import plotly.graph_objs as go
 
 import src.socios as s
-from src.setup import hourlyprofiles_dir, classout_dir   
+from src.support import hourlyprofiles_dir, classout_dir   
 
 def loadProfiles(year, unit):
     """

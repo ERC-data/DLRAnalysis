@@ -34,7 +34,7 @@ import pyodbc
 import feather
 import os
 
-from setup import dlrdb_dir, src_dir
+from support import dlrdb_dir, src_dir
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """

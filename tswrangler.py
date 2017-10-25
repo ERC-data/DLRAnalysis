@@ -11,7 +11,7 @@ from glob import glob
 import os
 from pathlib import Path
 
-from setup import rawprofiles_dir, hourlyprofiles_dir
+from support import rawprofiles_dir, hourlyprofiles_dir
 
 def reduceRawProfiles(filepath = rawprofiles_dir):
     """

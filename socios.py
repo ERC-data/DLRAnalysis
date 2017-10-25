@@ -15,7 +15,7 @@ import feather
 from glob import glob
 import os
 
-from src.setup import table_dir, e_dir
+from src.support import table_dir, e_dir
 
 def loadTables(filepath = table_dir):
     """
