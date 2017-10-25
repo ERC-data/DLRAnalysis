@@ -274,7 +274,7 @@ def csvTables(savepath, names, dataframes):
         print('Successfully saved to' + filename)        
     return        
 
-        
+       
 def anonAns():
     """
     This function fetches survey responses and anonymises them, then returns and saves the anonymsed dataset as feather object.
@@ -291,5 +291,5 @@ def anonAns():
         for i, rows in qanon.iterrows():
             a.set_value(a[a.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
         
-        tableToFeather([k.lower() + '_anon'],[a]) #saves answers as feather object
+        writeTables([k.lower() + '_anon'],[a]) #saves answers as feather object
     return

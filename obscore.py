@@ -29,7 +29,6 @@ def saveTables():
     qdtype = o.getData('QDataType')
     qredundancy = o.getData('QRedundancy')
     qconstraints = o.getData('QConstraints')
-    answerid = o.getAnswerID()
     answers = o.getData('Answers')
     answers_num = o.getData('Answers_Number')
     links = o.getData('LinkTable')
@@ -37,8 +36,8 @@ def saveTables():
     profilesummary = o.getData('ProfileSummaryTable')
     recorderinstall = o.getData('RECORDER_INSTALL_TABLE')
     
-    tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answerid', 'answers', 'answers_num', 'links', 'profiles' ,'profilesummary','recorderinstall']
-    tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answerid, answers, answers_num, links, profiles, profilesummary, recorderinstall]
+    tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answers', 'answers_num', 'links', 'profiles' ,'profilesummary','recorderinstall']
+    tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answers, answers_num, links, profiles, profilesummary, recorderinstall]
     
     o.writeTables(tablenames, tabledata)
     o.anonAns() #anonymise and save answer tables
