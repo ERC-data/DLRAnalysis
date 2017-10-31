@@ -15,14 +15,14 @@ from glob import glob
 import os
 from pathlib import Path
 
-from support import rawprofiles_dir, hourlyprofiles_dir
-import obshelpers as o
+from observations.support import rawprofiles_dir, hourlyprofiles_dir, obs_dir
+import observations.obshelpers as o
 
 def saveTables():
     """
     This function fetches tables from the SQL database and saves them as a feather object. Answer tables are anonymsed to remove all discriminating personal information of respondents.
     """
-    
+    #get and save important tables
     groups = o.getGroups() 
     questions = o.getData('Questions')
     questionaires = o.getData('Questionaires')
@@ -30,17 +30,36 @@ def saveTables():
     qredundancy = o.getData('QRedundancy')
     qconstraints = o.getData('QConstraints')
     answers = o.getData('Answers')
-    answers_num = o.getData('Answers_Number')
     links = o.getData('LinkTable')
     profiles = o.getData('Profiles')
     profilesummary = o.getData('ProfileSummaryTable')
     recorderinstall = o.getData('RECORDER_INSTALL_TABLE')
     
-    tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answers', 'answers_num', 'links', 'profiles' ,'profilesummary','recorderinstall']
-    tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answers, answers_num, links, profiles, profilesummary, recorderinstall]
+    tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answers', 'links', 'profiles' ,'profilesummary','recorderinstall']
+    tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answers, links, profiles, profilesummary, recorderinstall]
     
     o.writeTables(tablenames, tabledata)
-    o.anonAns() #anonymise and save answer tables
+ 
+def saveAnswers():
+    """
+    This function fetches survey responses and anonymises them, then returns and saves the anonymsed dataset as a feather object.
+    The information on which questions to anonymise is contained in two csv files, blobQs.csv and charQs.csv.
+    
+    """
+    anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv', 'Answers_Number':None}    
+    for k,v in anstables.items():
+        a = o.getData(k) #get all answers
+        if v is None:
+            pass
+        else:
+            qs = pd.read_csv(os.path.join(obs_dir, 'anonymise', v))
+            qs = qs.loc[lambda qs: qs.anonymise == 1, :]
+            qanon = pd.merge(o.getData('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
+            for i, rows in qanon.iterrows():
+                a.set_value(a[a.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
+        
+        o.writeTables([k.lower() + '_anon'],[a]) #saves answers as feather object
+    return
     
 def saveRawProfiles(yearstart, yearend):
     """
@@ -50,53 +69,54 @@ def saveRawProfiles(yearstart, yearend):
     if yearstart < 2009:
         for year in range(yearstart, yearend + 1):
             for unit in ['A','V']:
-                o.getProfiles(year, unit)
+                for month in range(1, 13):
+                    o.writeProfiles(year, month, unit)
     elif yearstart >= 2009 and yearend <= 2014:       
         for year in range(yearstart, yearend + 1):
             for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
-                o.getProfiles(year, unit)
+                for month in range(1, 13):
+                    o.writeProfiles(year, month, unit)
     else:
         print('Years are out of range. Please select a year start and end date between 1994 and 2014')
 
-def reduceRawProfiles(filepath = rawprofiles_dir):
+def reduceRawProfiles(year):
     """
     This function uses a rolling window to reduce all raw load profiles to hourly mean values. Monthly load profiles are then concatenated into annual profiles and returned as a dictionary object.
     The data is structured as follows:
         dict[unit:{year:[list_of_profile_ts]}]
     
     """
-    p = Path(filepath)
+    p = Path(os.path.join(rawprofiles_dir, str(year)))
+    
     for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
-        for child in p.iterdir():
-        #create empty directory to save files
-            dir_path = os.path.join(hourlyprofiles_dir, unit)
-            os.makedirs(dir_path, exist_ok=True)
-            year = os.path.split(child)[-1]             
+        #create empty directory to save files   
+        dir_path = os.path.join(hourlyprofiles_dir, unit)
+        os.makedirs(dir_path, exist_ok=True)
         #initialise empty dataframe to concatenate annual timeseries
-            ts = pd.DataFrame()
+        ts = pd.DataFrame()
         #iterate through all data files to combine 5min monthly into hourly reduced annual timeseries
-            for grandchild in child.iterdir():
-                try:
-                    childpath = glob(os.path.join(grandchild, '*_' + unit + '.feather'))[0]
-                    data = feather.read_dataframe(childpath)
-                    data.Datefield = np.round(data.Datefield.astype(np.int64), -9).astype('datetime64[ns]')
-                    data['Valid'] = data['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False})
-                    if unit in ['A','V','Hz','kVA','kW']:
-                        hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample('H', on='Datefield').mean()
-                    else:
-                        print("Unit must be one of 'A', 'V', 'kVA', 'Hz', 'kW'")
-                    hourlydata.reset_index(inplace=True)
-                    hourlydata = hourlydata.loc[:, hourlydata.columns != 'Active']
-                    ts = ts.append(hourlydata)
-                    print(grandchild, unit)
-                except:
-                    print('Could not add data for ' + str(grandchild)) #skip if feather file does not exist 
-        #write to reduced data to file
-            if ts.empty:
-                pass
-            else:
-                wpath = os.path.join(dir_path, year + '_' + unit + '.feather')
-                feather.write_dataframe(ts, wpath)
-                print('Write success')
+        for child in p.iterdir():  
+            try:
+                childpath = glob(os.path.join(child, '*_' + unit + '.feather'))[0]
+                data = feather.read_dataframe(childpath)
+                data.Datefield = np.round(data.Datefield.astype(np.int64), -9).astype('datetime64[ns]')
+                data['Valid'] = data['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False})
+                if unit in ['A','V','Hz','kVA','kW']:
+                    hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample('H', on='Datefield').mean()
+                else:
+                    print("Unit must be one of 'A', 'V', 'kVA', 'Hz', 'kW'")
+                hourlydata.reset_index(inplace=True)
+                hourlydata = hourlydata.loc[:, hourlydata.columns != 'Active']
+                ts = ts.append(hourlydata)
+                print(child, unit)
+            except:
+                print('Could not add data for ' + str(child) + ' ' + unit) #skip if feather file does not exist 
+    #write to reduced data to file
+        if ts.empty:
+            pass
+        else:
+            wpath = os.path.join(dir_path, str(year) + '_' + unit + '.feather')
+            feather.write_dataframe(ts, wpath)
+            print('Write success')
     return
         

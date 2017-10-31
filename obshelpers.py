@@ -34,7 +34,7 @@ import pyodbc
 import feather
 import os
 
-from support import dlrdb_dir, src_dir
+from observations.support import dlrdb_dir, src_dir
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """
@@ -83,11 +83,10 @@ def getMetaProfiles(year, units = None):
     pids = pd.Series(map(str, getProfileID(year))) 
     #get observation metadata from the profiles table:
     metaprofiles = getData('profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
-    metaprofiles['Unit of measurement'].dropna(inplace=True)
     metaprofiles = metaprofiles[metaprofiles.ProfileId.isin(pids)] #select subset of metaprofiles corresponding to query
     metaprofiles.rename(columns={'Unit of measurement':'UoM'}, inplace=True)
     metaprofiles.loc[:,['UoM', 'RecorderID']] = metaprofiles.loc[:,['UoM', 'RecorderID',]].apply(pd.Categorical)
-    puom = getData('ProfileUnitsOfMeasure')
+    puom = getData('ProfileUnitsOfMeasure').sort_values(by=['UnitsID'])
     cats = list(puom.loc[puom.UnitsID.isin(metaprofiles['UoM'].cat.categories), 'Description'])
     metaprofiles['UoM'].cat.categories = cats
 
@@ -103,18 +102,7 @@ def getMetaProfiles(year, units = None):
         return print('Check spelling and choose V, A, kVA, Hz or kW as units, or leave blank to get profiles of all.')
     return metaprofiles, plist
 
-def writeProfile(df, group_year, profile_year, profile_month, units, dlrdb_sub_dir):
-    """
-    Creates folder structure and saves profiles as feather file.
-    """
-    dir_path = os.path.join(dlrdb_dir, 'profiles', dlrdb_sub_dir, str(group_year), str(profile_year) + '-' + str(profile_month))
-    os.makedirs(dir_path , exist_ok=True)
-    path = os.path.join(dir_path, str(profile_year) + '-' + str(profile_month) + '_' + str(units) + '.feather')
-    print(path)
-    feather.write_dataframe(df, path)
-    print('Write success')    
-
-def getProfiles(year, units = 'A'):
+def getProfiles(group_year, month, units):
     """
     This function fetches load profiles for one calendar year. 
     It takes the year as number and units as string:
@@ -123,83 +111,34 @@ def getProfiles(year, units = 'A'):
     
     """
     ## Get metadata
-    mp, plist = getMetaProfiles(year, units)
+    mp, plist = getMetaProfiles(group_year, units)
     
     ## Get profiles from server
     subquery = ', '.join(str(x) for x in plist)
-    for i in range(1,13):
-        try:
-            query = "SELECT pt.ProfileID \
-             ,pt.Datefield \
-             ,pt.Unitsread \
-             ,pt.Valid \
-            FROM [General_LR4].[dbo].[Profiletable] pt \
-            WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(i) + " \
-            ORDER BY pt.Datefield, pt.ProfileID"
-            profiles = getData(querystring = query)
-            #profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
+    try:
+        query = "SELECT pt.ProfileID \
+         ,pt.Datefield \
+         ,pt.Unitsread \
+         ,pt.Valid \
+        FROM [General_LR4].[dbo].[Profiletable] pt \
+        WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(month) + " \
+        ORDER BY pt.Datefield, pt.ProfileID"
+        profiles = getData(querystring = query)
+        #profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
+    
+        #data output:    
+        df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
+        df.drop('ProfileId', axis=1, inplace=True)
+        #convert strings to category data type to reduce memory usage
+        df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
         
-            #data output:    
-            df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
-            df.drop('ProfileId', axis=1, inplace=True)
-            #convert strings to category data type to reduce memory usage
-            df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
-            
-            head_year = df.head(1).Datefield.dt.year[0]
-            tail_year = df.tail(1).Datefield.dt.year[len(df)-1]
-            profile_month = df.Datefield[0].month
-            
-            if head_year == tail_year: #check if dataframe contains profiles for two years
-                writeProfile(df, year, head_year, profile_month, units, 'raw')
-            else:
-                #split dataframe into two years and save separately
-                head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
-                writeProfile(head_df, year, head_year, profile_month, units, 'raw')               
-                tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
-                writeProfile(tail_df, year, tail_year, profile_month, units, 'raw')
-        except:
-            pass
-    return
-
-def getSampleProfiles(year):
-    """
-    This function provides a sample of the top 1000 rows that will be returned with the getProfiles() function
-    
-    """
-    ## Get metadata
-    mp, plist = getMetaProfiles(year, units = None)
-    mp = mp[0:1]
-    plist = plist[0:1]
-    
-    ## Get profiles from server
-    subquery = ', '.join(str(x) for x in plist) #' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
-    query = "SELECT TOP 1000 pt.ProfileID, pt.Datefield, pt.Unitsread, pt.Valid FROM [General_LR4].[dbo].[Profiletable] pt WHERE pt.ProfileID IN (" + subquery + ") ORDER BY pt.Datefield, pt.ProfileID"
-    profiles = getData(querystring = query)
-    profiles['Valid'] = profiles['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False}) #reduce memory usage
-
-    ## Create data output    
-    df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
-    df.drop('ProfileId', axis=1, inplace=True)
-    df.loc[:,['ProfileID']] = df.loc[:,['ProfileID']].apply(pd.Categorical)     #convert to category type to reduce memory
-    return df
-
-def getProfileStart(year):
-    """
-    This function provides the start month for profiles in a given year.
-    
-    """
-    ## Get metadata
-    mp, plist = getMetaProfiles(year, units = None)
-    mp = mp[0:1]
-    plist = plist[0:1]
-    
-    ## Get profiles from server
-    subquery = ', '.join(str(x) for x in plist) #' OR pt.ProfileID = '.join(plist.map(lambda x: str(x)))
-    query = "SELECT TOP 1 pt.ProfileID, pt.Datefield, pt.Unitsread, pt.Valid FROM [General_LR4].[dbo].[Profiletable] pt WHERE pt.ProfileID IN (" + subquery + ") ORDER BY pt.Datefield, pt.ProfileID"
-    profiles = getData(querystring = query)
-    year = profiles.loc[0, 'Datefield'].year
-    month = profiles.loc[0, 'Datefield'].month
-    return year, month
+        head_year = df.head(1).Datefield.dt.year[0]
+        tail_year = df.tail(1).Datefield.dt.year[len(df)-1]
+        
+    except:
+        pass
+        
+    return df, head_year, tail_year
 
 def getGroups(year = None):
     """
@@ -244,10 +183,41 @@ def getGroups(year = None):
     else:
         stryear = str(year)
         return allgroups[allgroups['Year']== stryear] 
+    
+def writeProfiles(group_year, month, units):
+    """
+    Creates folder structure and saves profiles as feather file.
+    """
+    df, head_year, tail_year = getProfiles(group_year, month, units)
+    
+    dir_path = os.path.join(dlrdb_dir, 'profiles', 'raw', str(group_year), str(head_year) + '-' + str(month))
+    os.makedirs(dir_path , exist_ok=True)
+    path = os.path.join(dir_path, str(head_year) + '-' + str(month) + '_' + str(units) + '.feather')
+    
+    if head_year == tail_year: #check if dataframe contains profiles for two years
+        print(path)
+        feather.write_dataframe(df, path)
+        print('Write success')
+        
+    else:
+        #split dataframe into two years and save separately
+        head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
+        print(path)
+        feather.write_dataframe(head_df, path) 
+        print('Write success')
+        
+        #create directory for second year
+        dir_path = os.path.join(dlrdb_dir, 'profiles', 'raw', str(group_year), str(tail_year) + '-' + str(month))
+        os.makedirs(dir_path , exist_ok=True)
+        path = os.path.join(dir_path, str(tail_year) + '-' + str(month) + '_' + str(units) + '.feather')
+        tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
+        print(path)
+        feather.write_dataframe(tail_df, path)
+        print('Write success')
 
 def writeTables(names, dataframes): 
     """
-    This function saves a dictionary of name:dataframe items from a list of names and a list of dataframes as feather files.
+    This function saves a list of names with an associated list of dataframes as feather files.
     The getData() and getGroups() functions can be used to construct the dataframes.
     
     """
@@ -260,36 +230,5 @@ def writeTables(names, dataframes):
         os.makedirs(os.path.join(dlrdb_dir, 'data', 'tables') , exist_ok=True)
         path = os.path.join(dlrdb_dir, 'data', 'tables', k + '.feather')
         feather.write_dataframe(data, path)
-    return
-
-def csvTables(savepath, names, dataframes):
-    """
-    This function fetches tables saved as feather objects and saves them as csv files.
-    """
-    datadict = dict(zip(names, dataframes))
-    for k, v in datadict.items():    
-         #generate list of filenames
-        filename = os.path.join(savepath, k + '.csv')
-        v.to_csv(filename, index=False)
-        print('Successfully saved to' + filename)        
-    return        
-
-       
-def anonAns():
-    """
-    This function fetches survey responses and anonymises them, then returns and saves the anonymsed dataset as feather object.
-    The information on which questions to anonymise is contained in two csv files, blobQs.csv and charQs.csv.
-    
-    """
-    anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv'}    
-    for k,v in anstables.items():
-        a = getData(k) #get all answers
-        qs = pd.read_csv(os.path.join('anonymise', v))
-        qs = qs.loc[lambda qs: qs.anonymise == 1, :]
-        qanon = pd.merge(getData('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
-        
-        for i, rows in qanon.iterrows():
-            a.set_value(a[a.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
-        
-        writeTables([k.lower() + '_anon'],[a]) #saves answers as feather object
+        print('Successfully saved to ' + path)
     return
