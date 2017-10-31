@@ -34,7 +34,7 @@ import pyodbc
 import feather
 import os
 
-from observations.support import dlrdb_dir, src_dir
+from observations.support import dlrdb_dir, src_dir, rawprofiles_dir, table_dir
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """
@@ -135,10 +135,11 @@ def getProfiles(group_year, month, units):
         head_year = df.head(1).Datefield.dt.year[0]
         tail_year = df.tail(1).Datefield.dt.year[len(df)-1]
         
+        return df, head_year, tail_year
+        
     except:
         pass
         
-    return df, head_year, tail_year
 
 def getGroups(year = None):
     """
@@ -188,32 +189,36 @@ def writeProfiles(group_year, month, units):
     """
     Creates folder structure and saves profiles as feather file.
     """
-    df, head_year, tail_year = getProfiles(group_year, month, units)
-    
-    dir_path = os.path.join(dlrdb_dir, 'profiles', 'raw', str(group_year), str(head_year) + '-' + str(month))
-    os.makedirs(dir_path , exist_ok=True)
-    path = os.path.join(dir_path, str(head_year) + '-' + str(month) + '_' + str(units) + '.feather')
-    
-    if head_year == tail_year: #check if dataframe contains profiles for two years
-        print(path)
-        feather.write_dataframe(df, path)
-        print('Write success')
+    try:
+        df, head_year, tail_year = getProfiles(group_year, month, units)
         
-    else:
-        #split dataframe into two years and save separately
-        head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
-        print(path)
-        feather.write_dataframe(head_df, path) 
-        print('Write success')
-        
-        #create directory for second year
-        dir_path = os.path.join(dlrdb_dir, 'profiles', 'raw', str(group_year), str(tail_year) + '-' + str(month))
+        dir_path = os.path.join(rawprofiles_dir, str(group_year), str(head_year) + '-' + str(month))
         os.makedirs(dir_path , exist_ok=True)
-        path = os.path.join(dir_path, str(tail_year) + '-' + str(month) + '_' + str(units) + '.feather')
-        tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
-        print(path)
-        feather.write_dataframe(tail_df, path)
-        print('Write success')
+        path = os.path.join(dir_path, str(head_year) + '-' + str(month) + '_' + str(units) + '.feather')
+        
+        if head_year == tail_year: #check if dataframe contains profiles for two years
+            print(path)
+            feather.write_dataframe(df, path)
+            print('Write success')
+            
+        else:
+            #split dataframe into two years and save separately
+            head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
+            print(path)
+            feather.write_dataframe(head_df, path) 
+            print('Write success')
+            
+            #create directory for second year
+            dir_path = os.path.join(rawprofiles_dir, str(group_year), str(tail_year) + '-' + str(month))
+            os.makedirs(dir_path , exist_ok=True)
+            path = os.path.join(dir_path, str(tail_year) + '-' + str(month) + '_' + str(units) + '.feather')
+            tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
+            print(path)
+            feather.write_dataframe(tail_df, path)
+            print('Write success')
+            
+    except:
+        pass
 
 def writeTables(names, dataframes): 
     """
@@ -227,7 +232,8 @@ def writeTables(names, dataframes):
             data = datadict[k]
         else:  
             data = datadict[k].fillna(np.nan) #feather doesn't write None type
-        os.makedirs(os.path.join(dlrdb_dir, 'data', 'tables') , exist_ok=True)
-        path = os.path.join(dlrdb_dir, 'data', 'tables', k + '.feather')
+        
+        os.makedirs(os.path.join(table_dir) , exist_ok=True)
+        path = os.path.join(table_dir, k + '.feather')
         feather.write_dataframe(data, path)
     return
