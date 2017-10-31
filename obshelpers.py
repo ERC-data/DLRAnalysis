@@ -230,5 +230,4 @@ def writeTables(names, dataframes):
         os.makedirs(os.path.join(dlrdb_dir, 'data', 'tables') , exist_ok=True)
         path = os.path.join(dlrdb_dir, 'data', 'tables', k + '.feather')
         feather.write_dataframe(data, path)
-        print('Successfully saved to ' + path)
     return
