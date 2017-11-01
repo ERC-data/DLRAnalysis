@@ -8,14 +8,10 @@ This file contains functions to fetch and save data from the DLR SQL database. s
 
 NOTE: These functions require access to a DLR SQL database instance.
 """
-import numpy as np
 import pandas as pd
-import feather
-from glob import glob
 import os
-from pathlib import Path
 
-from observations.support import rawprofiles_dir, hourlyprofiles_dir, obs_dir
+from observations.support import obs_dir
 import observations.obshelpers as o
 
 def saveTables():
@@ -78,45 +74,3 @@ def saveRawProfiles(yearstart, yearend):
                     o.writeProfiles(year, month, unit)
     else:
         print('Years are out of range. Please select a year start and end date between 1994 and 2014')
-
-def reduceRawProfiles(year):
-    """
-    This function uses a rolling window to reduce all raw load profiles to hourly mean values. Monthly load profiles are then concatenated into annual profiles and returned as a dictionary object.
-    The data is structured as follows:
-        dict[unit:{year:[list_of_profile_ts]}]
-    
-    """
-    p = Path(os.path.join(rawprofiles_dir, str(year)))
-    
-    for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
-        #create empty directory to save files   
-        dir_path = os.path.join(hourlyprofiles_dir, unit)
-        os.makedirs(dir_path, exist_ok=True)
-        #initialise empty dataframe to concatenate annual timeseries
-        ts = pd.DataFrame()
-        #iterate through all data files to combine 5min monthly into hourly reduced annual timeseries
-        for child in p.iterdir():  
-            try:
-                childpath = glob(os.path.join(child, '*_' + unit + '.feather'))[0]
-                data = feather.read_dataframe(childpath)
-                data.Datefield = np.round(data.Datefield.astype(np.int64), -9).astype('datetime64[ns]')
-                data['Valid'] = data['Valid'].map(lambda x: x.strip()).map({'Y':True, 'N':False})
-                if unit in ['A','V','Hz','kVA','kW']:
-                    hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample('H', on='Datefield').mean()
-                else:
-                    print("Unit must be one of 'A', 'V', 'kVA', 'Hz', 'kW'")
-                hourlydata.reset_index(inplace=True)
-                hourlydata = hourlydata.loc[:, hourlydata.columns != 'Active']
-                ts = ts.append(hourlydata)
-                print(child, unit)
-            except:
-                print('Could not add data for ' + str(child) + ' ' + unit) #skip if feather file does not exist 
-    #write to reduced data to file
-        if ts.empty:
-            pass
-        else:
-            wpath = os.path.join(dir_path, str(year) + '_' + unit + '.feather')
-            feather.write_dataframe(ts, wpath)
-            print('Write success')
-    return
-        
