@@ -11,7 +11,7 @@ NOTE: These functions require access to a DLR SQL database instance.
 import pandas as pd
 import os
 
-from observations.support import obs_dir
+from support import obs_dir
 import observations.obshelpers as o
 
 def saveTables():

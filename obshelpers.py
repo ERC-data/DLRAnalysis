@@ -34,7 +34,7 @@ import pyodbc
 import feather
 import os
 
-from observations.support import dlrdb_dir, src_dir, rawprofiles_dir, table_dir
+from support import src_dir, rawprofiles_dir, table_dir
 
 def getData(tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """
