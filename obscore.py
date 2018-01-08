@@ -16,7 +16,7 @@ import observations.obshelpers as o
 
 def saveTables():
     """
-    This function fetches tables from the SQL database and saves them as a feather object. Answer tables are anonymsed to remove all discriminating personal information of respondents.
+    This function fetches tables from the SQL database and saves them as a feather object. 
     """
     #get and save important tables
     groups = o.getGroups() 
@@ -38,8 +38,8 @@ def saveTables():
  
 def saveAnswers():
     """
-    This function fetches survey responses and anonymises them, then returns and saves the anonymsed dataset as a feather object.
-    The information on which questions to anonymise is contained in two csv files, blobQs.csv and charQs.csv.
+    This function fetches survey responses and anonymises them to remove all discriminating personal information of respondents. The anonymsed dataset is returned and saved as a feather object.
+    Details for questions to anonymise are contained in two csv files, anonymise/blobQs.csv and anonymise/charQs.csv.
     
     """
     anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv', 'Answers_Number':None}    
