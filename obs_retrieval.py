@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 
@@ -45,24 +46,28 @@ def getData(db_cnx, tablename = None, querystring = 'SELECT * FROM tablename', c
     try:
         with open(os.path.join(obs_dir, db_cnx), 'r') as f: 
             cnxnstr = f.read().replace('\n', '')
-    except:
-        return('Could not read data from connection file. Check that the file exists and is stored in the observations directory.')
-    cnxn = pyodbc.connect(cnxnstr)  
-    
-    #specify and execute query(ies):
-    if querystring == "SELECT * FROM tablename":
-        if tablename is None:
-            return print('Specify a valid table from the DLR database')
-        elif tablename == 'Profiletable':
-            return print('The profiles table is too large to read into python in one go. Use the getProfiles() function.') 
-        else:
-            query = "SELECT * FROM [General_LR4].[dbo].%s" % (tablename)
+            
+    except FileNotFoundError as err:
+        print("File not found error: {0}".format(err))
+        raise
     else:
-        query = querystring
-        
-    df = pd.read_sql(query, cnxn)   #read to dataframe   
-    
-    return df
+        try:
+            cnxn = pyodbc.connect(cnxnstr)  
+            #specify and execute query(ies):
+            if querystring == "SELECT * FROM tablename":
+                if tablename is None:
+                    return print('Specify a valid table from the DLR database')
+                elif tablename == 'Profiletable':
+                    return print('The profiles table is too large to read into python in one go. Use the getProfiles() function.') 
+                else:
+                    query = "SELECT * FROM [General_LR4].[dbo].%s" % (tablename)
+            else:
+                query = querystring
+                
+            df = pd.read_sql(query, cnxn)   #read to dataframe   
+            return df
+        except Exception:
+            raise
 
 def getGroups(db_cnx, year = None):
     """
@@ -163,64 +168,56 @@ def getProfiles(db_cnx, group_year, month, units):
     
     ## Get profiles from server
     subquery = ', '.join(str(x) for x in plist)
-    try:
-        query = "SELECT pt.ProfileID \
-         ,pt.Datefield \
-         ,pt.Unitsread \
-         ,pt.Valid \
-        FROM [General_LR4].[dbo].[Profiletable] pt \
-        WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(month) + " \
-        ORDER BY pt.Datefield, pt.ProfileID"
-        profiles = getData(db_cnx, querystring = query)
-        
-        #data output:    
-        df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
-        df.drop('ProfileId', axis=1, inplace=True)
-        #convert strings to category data type to reduce memory usage
-        df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
-        
-        head_year = df.head(1).Datefield.dt.year[0]
-        tail_year = df.tail(1).Datefield.dt.year[len(df)-1]
-        
-        return df, head_year, tail_year
-        
-    except:
-        pass
+    query = "SELECT pt.ProfileID \
+     ,pt.Datefield \
+     ,pt.Unitsread \
+     ,pt.Valid \
+    FROM [General_LR4].[dbo].[Profiletable] pt \
+    WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(month) + " \
+    ORDER BY pt.Datefield, pt.ProfileID"
+    profiles = getData(db_cnx, querystring = query)
+    
+    #data output:    
+    df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
+    df.drop('ProfileId', axis=1, inplace=True)
+    #convert strings to category data type to reduce memory usage
+    df.loc[:,['ProfileID','Valid']] = df.loc[:,['ProfileID','Valid']].apply(pd.Categorical)
+    
+    head_year = df.head(1).Datefield.dt.year[0]
+    tail_year = df.tail(1).Datefield.dt.year[len(df)-1]
+    
+    return df, head_year, tail_year
     
 def writeProfiles(db_cnx, group_year, month, units):
     """
     Creates folder structure and saves profiles as feather file.
     """
-    try:
-        df, head_year, tail_year = getProfiles(db_cnx, group_year, month, units)
+    df, head_year, tail_year = getProfiles(db_cnx, group_year, month, units)
+    
+    dir_path = os.path.join(rawprofiles_dir, str(group_year), str(head_year) + '-' + str(month))
+    os.makedirs(dir_path , exist_ok=True)
+    path = os.path.join(dir_path, str(head_year) + '-' + str(month) + '_' + str(units) + '.feather')
+    
+    if head_year == tail_year: #check if dataframe contains profiles for two years
+        print(path)
+        feather.write_dataframe(df, path)
+        print('Write success')
         
-        dir_path = os.path.join(rawprofiles_dir, str(group_year), str(head_year) + '-' + str(month))
+    else:
+        #split dataframe into two years and save separately
+        head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
+        print(path)
+        feather.write_dataframe(head_df, path) 
+        print('Write success')
+        
+        #create directory for second year
+        dir_path = os.path.join(rawprofiles_dir, str(group_year), str(tail_year) + '-' + str(month))
         os.makedirs(dir_path , exist_ok=True)
-        path = os.path.join(dir_path, str(head_year) + '-' + str(month) + '_' + str(units) + '.feather')
-        
-        if head_year == tail_year: #check if dataframe contains profiles for two years
-            print(path)
-            feather.write_dataframe(df, path)
-            print('Write success')
-            
-        else:
-            #split dataframe into two years and save separately
-            head_df = df[df.Datefield.dt.year == head_year].reset_index(drop=True)
-            print(path)
-            feather.write_dataframe(head_df, path) 
-            print('Write success')
-            
-            #create directory for second year
-            dir_path = os.path.join(rawprofiles_dir, str(group_year), str(tail_year) + '-' + str(month))
-            os.makedirs(dir_path , exist_ok=True)
-            path = os.path.join(dir_path, str(tail_year) + '-' + str(month) + '_' + str(units) + '.feather')
-            tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
-            print(path)
-            feather.write_dataframe(tail_df, path)
-            print('Write success')
-            
-    except:
-        pass
+        path = os.path.join(dir_path, str(tail_year)+'-'+str(month)+'_'+str(units)+'.feather')
+        tail_df = df[df.Datefield.dt.year == tail_year].reset_index(drop=True)
+        print(path)
+        feather.write_dataframe(tail_df, path)
+        print('Write success')
 
 def writeTables(names, dataframes): 
     """
@@ -292,7 +289,7 @@ def saveRawProfiles(yearstart, yearend, db_cnx):
         for year in range(yearstart, yearend + 1):
             for unit in ['A','V']:
                 for month in range(1, 13):
-                    writeProfiles(year, month, unit, db_cnx)
+                    writeProfiles(db_cnx, year, month, unit)
     elif yearstart >= 2009 and yearend <= 2014:       
         for year in range(yearstart, yearend + 1):
             for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
