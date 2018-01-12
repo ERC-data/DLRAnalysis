@@ -19,7 +19,7 @@ import plotly as py
 from plotly.offline import offline
 import plotly.graph_objs as go
 
-from support import rawprofiles_dir, hourlyprofiles_dir, table_dir
+from support import rawprofiles_dir, profiles_dir, table_dir
 
 def reduceRawProfiles(year, unit, interval):
     """
@@ -28,12 +28,6 @@ def reduceRawProfiles(year, unit, interval):
     
     """
     p = Path(os.path.join(rawprofiles_dir, str(year)))
-    
-    #set resampling interval
-    if interval is None:
-        i = 'H'
-    else:
-        i = interval
     
     #initialise empty dataframe to concatenate annual timeseries
     ts = pd.DataFrame()
@@ -47,7 +41,7 @@ def reduceRawProfiles(year, unit, interval):
             data['Valid'] = data['Valid'].map(lambda x: x.strip()).map({'Y':1, 'N':0})
             data['Valid'].fillna(0, inplace=True)
             if unit in ['A','V','Hz','kVA','kW']:
-                hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample(i, on='Datefield').mean()
+                hourlydata = data.groupby(['RecorderID', 'ProfileID']).resample(interval, on='Datefield').mean()
             else:
                 print("Unit must be one of 'A', 'V', 'kVA', 'Hz', 'kW'")
             hourlydata.reset_index(inplace=True)
@@ -61,47 +55,51 @@ def reduceRawProfiles(year, unit, interval):
         
     return ts
 
-def saveReducedProfiles(year, interval=None):
+def saveReducedProfiles(yearstart, yearend, interval):
     """
     This function iterates through profile units, reduces all profiles with reduceRawProfiles() and saves the result as a feather object in a directory tree.
     
-    """
-    for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
+    """ 
+    for year in range(yearstart, yearend + 1):   
+        for unit in ['A', 'V', 'kVA', 'Hz', 'kW']:
+            
+            #create empty directory to save files   
+            dir_path = os.path.join(profiles_dir, interval, unit)
+            os.makedirs(dir_path, exist_ok=True)
         
-        #create empty directory to save files   
-        dir_path = os.path.join(hourlyprofiles_dir, unit)
-        os.makedirs(dir_path, exist_ok=True)
-    
-        ts = reduceRawProfiles(year, unit)
-        
-        #write to reduced data to file
-        if ts.empty:
-            pass
-        else:
-            wpath = os.path.join(dir_path, str(year) + '_' + unit + '.feather')
-            feather.write_dataframe(ts, wpath)
-            print('Write success')
+            ts = reduceRawProfiles(year, unit, interval)
+            
+            #write to reduced data to file
+            if ts.empty:
+                pass
+            else:
+                wpath = os.path.join(dir_path, str(year) + '_' + unit + '.feather')
+                feather.write_dataframe(ts, wpath)
+                print('Write success')
     return
 
-def loadProfiles(year, unit):
+def loadProfiles(year, unit, dir_name):
     """
-    This function loads a year's hourly unit profiles into a dataframe and returns it together with the year and unit concerned.
+    This function loads a year's unit profiles from the dir_name in profiles directory into a dataframe and returns it together with the year and unit concerned.
     
     """
     #load data
-    data = feather.read_dataframe(os.path.join(hourlyprofiles_dir, unit, str(year) + '_' + unit + '.feather'))
+    data = feather.read_dataframe(os.path.join(profiles_dir, dir_name, unit,
+                                               str(year)+'_'+unit+'.feather'))
     data.drop_duplicates(inplace=True)
     
     return data, year, unit
 
-def loadTables(filepath = table_dir):
+def loadTables():
     """
     This function loads all feather tables in filepath into workspace.
     
     """
+    dir_path = os.path.join(table_dir, 'feather')
+    
     try:
-        files = glob(os.path.join(filepath, '*.feather'))
-        names = [f.rpartition('.')[0] for f in os.listdir(filepath)]
+        files = glob(os.path.join(dir_path, '*.feather'))
+        names = [f.rpartition('.')[0] for f in os.listdir(dir_path)]
         tables = {}
         for n, f in zip(names, files):
             tables[n] = feather.read_dataframe(f)
@@ -119,27 +117,22 @@ def loadTables(filepath = table_dir):
     
     return tables
 
-def csvTables(savepath):
+def csvTables():
     """
     This function fetches tables saved as feather objects and saves them as csv files.
     """
     #get data
     tables = loadTables()
+    
+    dir_path = os.path.join(table_dir, 'csv')
 
     #generate list of filenames
-    filenames = [os.path.join(savepath, x + '.csv') for x in list(tables.keys())]
+    filenames = [os.path.join(dir_path, x + '.csv') for x in list(tables.keys())]
     
     for name, path in zip(list(tables.keys()), filenames):
         df = tables[name]
         df.to_csv(path, index=False)
         print('Successfully saved to ' + path)        
-    return
-
-def data2ckan(csvpath):
-    """
-    This function uploads csv tables to the energydata.uct.ac.za data portal for online access. 
-    """
-## TODO
     return
         
 def shapeProfiles(year, unit):

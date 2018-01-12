@@ -7,7 +7,7 @@
 This file contains functions to fetch data from the Domestic Load Research SQL Server database. It must be run from a server with a DLR database installation.
 
 The following functions are defined:
-    getData 
+    getObs 
     getProfileID
     getMetaProfiles
     profileFetchEst
@@ -22,10 +22,10 @@ The following functions are defined:
     
 SOME EXAMPLES 
 
-# Using getData with SQL queries:
+# Using getObs with SQL queries:
 
 query = 'SELECT * FROM [General_LR4].[dbo].[linktable] WHERE ProfileID = 12005320'
-df = getData(querystring = query)
+df = getObs(querystring = query)
     
 """
 
@@ -37,7 +37,7 @@ import os
 
 from support import rawprofiles_dir, table_dir, obs_dir
 
-def getData(db_cnx, tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
+def getObs(db_cnx, tablename = None, querystring = 'SELECT * FROM tablename', chunksize = 10000):
     """
     Fetches a specified table from the DLR database and returns it as a pandas dataframe.
 
@@ -74,7 +74,7 @@ def getGroups(db_cnx, year = None):
     This function performs some massive Groups wrangling
     
     """
-    groups = getData(db_cnx, 'Groups')
+    groups = getObs(db_cnx, 'Groups')
     groups['ParentID'].fillna(0, inplace=True)
     groups['ParentID'] = groups['ParentID'].astype('int64').astype('category')
     groups['GroupName'] = groups['GroupName'].map(lambda x: x.strip())
@@ -118,7 +118,7 @@ def getProfileID(db_cnx, year = None):
     Fetches all profile IDs for a given year. None returns all profile IDs.
     
     """
-    links = getData(db_cnx, 'LinkTable')
+    links = getObs(db_cnx, 'LinkTable')
     allprofiles = links[(links.GroupID != 0) & (links.ProfileID != 0)]
     if year is None:
         return allprofiles
@@ -135,11 +135,11 @@ def getMetaProfiles(db_cnx, year, units = None):
     #list of profiles for the year:
     pids = pd.Series(map(str, getProfileID(db_cnx, year))) 
     #get observation metadata from the profiles table:
-    metaprofiles = getData(db_cnx, 'profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
+    metaprofiles = getObs(db_cnx, 'profiles')[['Active','ProfileId','RecorderID','Unit of measurement']]
     metaprofiles = metaprofiles[metaprofiles.ProfileId.isin(pids)] #select subset of metaprofiles corresponding to query
     metaprofiles.rename(columns={'Unit of measurement':'UoM'}, inplace=True)
     metaprofiles.loc[:,['UoM', 'RecorderID']] = metaprofiles.loc[:,['UoM', 'RecorderID',]].apply(pd.Categorical)
-    puom = getData(db_cnx, 'ProfileUnitsOfMeasure').sort_values(by=['UnitsID'])
+    puom = getObs(db_cnx, 'ProfileUnitsOfMeasure').sort_values(by=['UnitsID'])
     cats = list(puom.loc[puom.UnitsID.isin(metaprofiles['UoM'].cat.categories), 'Description'])
     metaprofiles['UoM'].cat.categories = cats
 
@@ -175,7 +175,7 @@ def getProfiles(db_cnx, group_year, month, units):
     FROM [General_LR4].[dbo].[Profiletable] pt \
     WHERE pt.ProfileID IN (" + subquery + ") AND MONTH(Datefield) =" + str(month) + " \
     ORDER BY pt.Datefield, pt.ProfileID"
-    profiles = getData(db_cnx, querystring = query)
+    profiles = getObs(db_cnx, querystring = query)
     
     #data output:    
     df = pd.merge(profiles, mp, left_on='ProfileID', right_on='ProfileId')
@@ -222,7 +222,7 @@ def writeProfiles(db_cnx, group_year, month, units):
 def writeTables(names, dataframes): 
     """
     This function saves a list of names with an associated list of dataframes as feather files.
-    The getData() and getGroups() functions can be used to construct the dataframes.
+    The getObs() and getGroups() functions can be used to construct the dataframes.
     
     """
     datadict = dict(zip(names, dataframes))
@@ -232,8 +232,8 @@ def writeTables(names, dataframes):
         else:  
             data = datadict[k].fillna(np.nan) #feather doesn't write None type
         
-        os.makedirs(os.path.join(table_dir) , exist_ok=True)
-        path = os.path.join(table_dir, k + '.feather')
+        os.makedirs(os.path.join(table_dir, 'feather') , exist_ok=True)
+        path = os.path.join(table_dir, 'feather', k + '.feather')
         feather.write_dataframe(data, path)
     return
 
@@ -243,16 +243,16 @@ def saveTables(db_cnx):
     """
     #get and save important tables
     groups = getGroups(db_cnx) 
-    questions = getData(db_cnx, 'Questions')
-    questionaires = getData(db_cnx, 'Questionaires')
-    qdtype = getData(db_cnx, 'QDataType')
-    qredundancy = getData(db_cnx, 'QRedundancy')
-    qconstraints = getData(db_cnx, 'QConstraints')
-    answers = getData(db_cnx, 'Answers')
-    links = getData(db_cnx, 'LinkTable')
-    profiles = getData(db_cnx, 'Profiles')
-    profilesummary = getData(db_cnx, 'ProfileSummaryTable')
-    recorderinstall = getData(db_cnx, 'RECORDER_INSTALL_TABLE')
+    questions = getObs(db_cnx, 'Questions')
+    questionaires = getObs(db_cnx, 'Questionaires')
+    qdtype = getObs(db_cnx, 'QDataType')
+    qredundancy = getObs(db_cnx, 'QRedundancy')
+    qconstraints = getObs(db_cnx, 'QConstraints')
+    answers = getObs(db_cnx, 'Answers')
+    links = getObs(db_cnx, 'LinkTable')
+    profiles = getObs(db_cnx, 'Profiles')
+    profilesummary = getObs(db_cnx, 'ProfileSummaryTable')
+    recorderinstall = getObs(db_cnx, 'RECORDER_INSTALL_TABLE')
     
     tablenames = ['groups', 'questions', 'questionaires', 'qdtype', 'qredundancy', 'qconstraints', 'answers', 'links', 'profiles' ,'profilesummary','recorderinstall']
     tabledata = [groups, questions, questionaires, qdtype, qredundancy, qconstraints, answers, links, profiles, profilesummary, recorderinstall]
@@ -267,13 +267,13 @@ def saveAnswers(db_cnx):
     """
     anstables = {'Answers_blob':'blobQs.csv', 'Answers_char':'charQs.csv', 'Answers_Number':None}    
     for k,v in anstables.items():
-        a = getData(db_cnx, k) #get all answers
+        a = getObs(db_cnx, k) #get all answers
         if v is None:
             pass
         else:
             qs = pd.read_csv(os.path.join(obs_dir, 'anonymise', v))
             qs = qs.loc[lambda qs: qs.anonymise == 1, :]
-            qanon = pd.merge(getData('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
+            qanon = pd.merge(getObs('Answers'), qs, left_on='QuestionaireID', right_on='QuestionaireID')[['AnswerID','ColumnNo','anonymise']]
             for i, rows in qanon.iterrows():
                 a.set_value(a[a.AnswerID == rows.AnswerID].index[0], str(rows.ColumnNo),'a')
         
